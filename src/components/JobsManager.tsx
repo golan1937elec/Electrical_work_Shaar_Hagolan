@@ -377,28 +377,42 @@ export default function JobsManager({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setCalcHours((h) => Math.max(0.5, h - 0.5))}
+                      onClick={() => setCalcHours((h) => Math.max(0.25, h - 0.25))}
                       className="w-8 h-8 rounded bg-white border border-slate-200 flex items-center justify-center font-bold hover:bg-slate-100 shrink-0 text-slate-600"
                     >
                       -
                     </button>
                     <input
                       type="number"
-                      min="0.5"
-                      step="0.5"
+                      min="0.25"
+                      step="0.25"
                       value={calcHours}
-                      onChange={(e) => setCalcHours(Math.max(0.5, parseFloat(e.target.value) || 1))}
+                      onChange={(e) => setCalcHours(Math.max(0.25, parseFloat(e.target.value) || 0.25))}
                       className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-lg bg-white text-center font-mono font-bold"
                     />
                     <button
                       type="button"
-                      onClick={() => setCalcHours((h) => h + 0.5)}
+                      onClick={() => setCalcHours((h) => h + 0.25)}
                       className="w-8 h-8 rounded bg-white border border-slate-200 flex items-center justify-center font-bold hover:bg-slate-100 shrink-0 text-slate-600"
                     >
                       +
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCalcHours(0.25)}
+                      className="text-[10px] px-1.5 py-0.5 rounded border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 transition"
+                    >
+                      רבע שעה (0.25)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCalcHours(0.5)}
+                      className="text-[10px] px-1.5 py-0.5 rounded border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 transition"
+                    >
+                      חצי שעה (0.5)
+                    </button>
                     <button
                       type="button"
                       onClick={() => setCalcHours(1)}
