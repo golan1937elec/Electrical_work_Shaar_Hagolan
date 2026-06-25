@@ -15,10 +15,15 @@ interface ProjectHistoryProps {
   currentProject: Project;
   catalog: CatalogItem[];
   onLoadProject: (project: Project) => void;
+  savedProjects: Project[];
+  setSavedProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  savedDrafts: any[];
+  setSavedDrafts: React.Dispatch<React.SetStateAction<any[]>>;
+  vatRate?: number;
 }
 
 // Inline helper to calculate accurate project stats
-function calculateProjectMetrics(project: Project, catalog: CatalogItem[]) {
+function calculateProjectMetrics(project: Project, catalog: CatalogItem[], vatRate: number = 17) {
   let totalCostPrice = 0;
   let totalClientPrice = 0;
   let totalLaborCost = 0;
@@ -37,7 +42,7 @@ function calculateProjectMetrics(project: Project, catalog: CatalogItem[]) {
   });
 
   const subtotal = totalClientPrice + totalLaborCost;
-  const totalWithVat = project.includeVat ? subtotal * 1.17 : subtotal;
+  const totalWithVat = project.includeVat ? subtotal * (1 + vatRate / 100) : subtotal;
   const netProfit = totalLaborCost + (totalClientPrice - totalCostPrice);
 
   return {
@@ -54,11 +59,12 @@ export default function ProjectHistory({
   currentProject,
   catalog,
   onLoadProject,
+  savedProjects,
+  setSavedProjects,
+  savedDrafts,
+  setSavedDrafts,
+  vatRate = 17,
 }: ProjectHistoryProps) {
-  // Saved Projects List
-  const [savedProjects, setSavedProjects] = useState<Project[]>([]);
-  // Local Drafts List
-  const [savedDrafts, setSavedDrafts] = useState<{ id: string; name: string; date: string; project: Project }[]>([]);
   
   // Form input to archive current project
   const [archiveClientName, setArchiveClientName] = useState("");
@@ -73,27 +79,8 @@ export default function ProjectHistory({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load history from localStorage
+  // Set default form values from current project
   useEffect(() => {
-    const storedProjects = localStorage.getItem("electrician_archived_projects");
-    if (storedProjects) {
-      try {
-        setSavedProjects(JSON.parse(storedProjects));
-      } catch (e) {
-        console.error("Failed to parse archived projects", e);
-      }
-    }
-
-    const storedDrafts = localStorage.getItem("electrician_drafts");
-    if (storedDrafts) {
-      try {
-        setSavedDrafts(JSON.parse(storedDrafts));
-      } catch (e) {
-        console.error("Failed to parse drafts", e);
-      }
-    }
-
-    // Set default form values from current project
     setArchiveClientName(currentProject.clientName || "");
     const today = new Date().toISOString().split('T')[0];
     setArchiveDate(currentProject.date || today);
@@ -250,7 +237,7 @@ export default function ProjectHistory({
       
       const monthLabel = d.toLocaleString("he-IL", { month: "long" }) + " " + year;
 
-      const metrics = calculateProjectMetrics(proj, catalog);
+      const metrics = calculateProjectMetrics(proj, catalog, vatRate);
 
       if (!months[key]) {
         months[key] = {
@@ -289,7 +276,7 @@ export default function ProjectHistory({
 
   // Calculate overall statistics for filtered projects
   const totalFilteredStats = filteredProjects.reduce((sums, p) => {
-    const m = calculateProjectMetrics(p, catalog);
+    const m = calculateProjectMetrics(p, catalog, vatRate);
     return {
       count: sums.count + 1,
       revenue: sums.revenue + m.subtotal,
@@ -395,7 +382,7 @@ export default function ProjectHistory({
                 {currentProject.clientName || "לקוח ללא שם"} ({currentProject.jobs.length} עבודות כלולות)
               </div>
               <div className="font-mono text-xs text-emerald-400 font-bold">
-                רווח נקי משוער לחשמלאי: ₪{calculateProjectMetrics(currentProject, catalog).netProfit.toFixed(1)}
+                רווח נקי משוער לחשמלאי: ₪{calculateProjectMetrics(currentProject, catalog, vatRate).netProfit.toFixed(1)}
               </div>
             </div>
           </div>
@@ -434,7 +421,7 @@ export default function ProjectHistory({
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {savedDrafts.map((draft) => {
-              const metrics = calculateProjectMetrics(draft.project, catalog);
+              const metrics = calculateProjectMetrics(draft.project, catalog, vatRate);
               return (
                 <div key={draft.id} className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-between hover:border-indigo-200 transition">
                   <div>
@@ -550,7 +537,7 @@ export default function ProjectHistory({
           ) : (
             <div className="space-y-4">
               {filteredProjects.map((proj) => {
-                const metrics = calculateProjectMetrics(proj, catalog);
+                const metrics = calculateProjectMetrics(proj, catalog, vatRate);
                 const isExpanded = expandedProjectId === proj.id;
 
                 return (

@@ -4,9 +4,10 @@ import Logo from "./Logo";
 
 interface PrintableInvoiceProps {
   project: Project;
+  vatRate?: number;
 }
 
-export default function PrintableInvoice({ project }: PrintableInvoiceProps) {
+export default function PrintableInvoice({ project, vatRate = 17 }: PrintableInvoiceProps) {
   const { clientName, clientPhone, projectAddress, branch, date, globalMarkupPercent, includeVat, docType = "quote", jobs } = project;
 
   // Global calculations
@@ -19,7 +20,7 @@ export default function PrintableInvoice({ project }: PrintableInvoiceProps) {
 
   const totalLaborCost = jobs.reduce((sum, job) => sum + job.laborCost, 0);
   const subtotalClient = totalClientMaterialPrice + totalLaborCost;
-  const vatAmount = includeVat ? subtotalClient * 0.17 : 0;
+  const vatAmount = includeVat ? subtotalClient * (vatRate / 100) : 0;
   const grandTotalClient = subtotalClient + vatAmount;
 
   return (
@@ -104,7 +105,7 @@ export default function PrintableInvoice({ project }: PrintableInvoiceProps) {
         </div>
         {includeVat && (
           <div className="flex justify-between text-slate-500">
-            <span>מע״מ (17%):</span>
+            <span>מע״מ ({vatRate}%):</span>
             <span className="font-mono">₪{vatAmount.toFixed(1)}</span>
           </div>
         )}

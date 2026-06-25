@@ -11,10 +11,15 @@ import CommonLaborTemplates from "./components/CommonLaborTemplates";
 import JobsManager from "./components/JobsManager";
 import QuoteSummary from "./components/QuoteSummary";
 import ProjectHistory from "./components/ProjectHistory";
-import ClientDetailsManager from "./components/ClientDetailsManager";
+import ClientDetailsManager, { DEFAULT_BRANCHES } from "./components/ClientDetailsManager";
 import PrintableInvoice from "./components/PrintableInvoice";
 import Logo from "./components/Logo";
-import { Zap, Briefcase, Tag, Info, Shield, HelpCircle, FileCheck, CheckCircle2, RefreshCw, History, Sparkles, Save, FileDown, FileUp, CheckCircle, AlertCircle } from "lucide-react";
+import { 
+  Zap, Briefcase, Tag, Info, Shield, HelpCircle, FileCheck, CheckCircle2, 
+  RefreshCw, History, Sparkles, Save, FileDown, FileUp, CheckCircle, AlertCircle,
+  Cloud, CloudOff, Settings, Wifi, Database, Coins
+} from "lucide-react";
+import { saveWorkspaceToCloud, loadWorkspaceFromCloud } from "./lib/firebase";
 
 export default function App() {
   // 1. Initial State Hooks
@@ -44,6 +49,25 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState("");
   const [lastSyncTime, setLastSyncTime] = useState("");
+
+  // Lifted States from child components for cross-device cloud sync
+  const [savedProjects, setSavedProjects] = useState<Project[]>([]);
+  const [savedDrafts, setSavedDrafts] = useState<any[]>([]);
+  const [branches, setBranches] = useState<string[]>([]);
+  const [rates, setRates] = useState({
+    rateElectrician: 250,
+    rateSenior: 350,
+    rateWithAssistant: 380,
+  });
+  const [vatRate, setVatRate] = useState<number>(17);
+
+  // Cloud Sync States
+  const [syncCode, setSyncCode] = useState<string>("");
+  const [autoSync, setAutoSync] = useState<boolean>(true);
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>("");
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+  const [showCloudPanel, setShowCloudPanel] = useState<boolean>(false);
+  const [cloudStatusMsg, setCloudStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
 
   const triggerErcoSync = (manual = false) => {
     setIsSyncing(true);
@@ -91,6 +115,104 @@ export default function App() {
     }, 600);
   };
 
+  // Helper to trigger manual or background Cloud Upload
+  const uploadToCloud = async (codeToUse = syncCode) => {
+    if (!codeToUse || !codeToUse.trim()) return;
+    setIsCloudSyncing(true);
+    try {
+      await saveWorkspaceToCloud(codeToUse, {
+        catalog,
+        project,
+        archivedProjects: savedProjects,
+        drafts: savedDrafts,
+        customBranches: branches,
+        rates,
+        vatRate,
+      });
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("he-IL") + " " + now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+      setLastCloudSyncTime(dateStr);
+      localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
+      setCloudStatusMsg({ text: `הנתונים סונכרנו בהצלחה לענן תחת הקוד: ${codeToUse.trim().toUpperCase()}`, isError: false });
+    } catch (err) {
+      console.error("Cloud save error:", err);
+      setCloudStatusMsg({ text: "שגיאה בסנכרון לענן. ודא חיבור אינטרנט תקין.", isError: true });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  // Helper to connect and sync with a cloud code
+  const connectAndSyncCloud = async (codeToUse: string) => {
+    const cleanCode = codeToUse.trim().toUpperCase();
+    if (!cleanCode) {
+      setCloudStatusMsg({ text: "נא להזין קוד סנכרון תקין", isError: true });
+      return;
+    }
+
+    setIsCloudSyncing(true);
+    setCloudStatusMsg({ text: "מתחבר לענן וטוען נתונים...", isError: false });
+
+    try {
+      const cloudData = await loadWorkspaceFromCloud(cleanCode);
+      if (cloudData) {
+        const confirmOverwrite = window.confirm(`נמצאו נתוני סנכרון השמורים בענן עבור קוד זה.\nהאם ברצונך לייבא אותם ולדרוס את הנתונים המקומיים במכשיר זה?`);
+        if (confirmOverwrite) {
+          // Overwrite local state with cloud state
+          if (cloudData.catalog) setCatalog(cloudData.catalog);
+          if (cloudData.project) setProject(cloudData.project);
+          if (cloudData.archivedProjects) setSavedProjects(cloudData.archivedProjects);
+          if (cloudData.drafts) setSavedDrafts(cloudData.drafts);
+          if (cloudData.customBranches) setBranches(cloudData.customBranches);
+          if (cloudData.rates) setRates(cloudData.rates);
+          if (cloudData.vatRate) setVatRate(cloudData.vatRate);
+
+          setSyncCode(cleanCode);
+          localStorage.setItem("electrician_sync_code", cleanCode);
+          
+          if (cloudData.lastUpdated) {
+            const dateObj = new Date(cloudData.lastUpdated);
+            const dateStr = dateObj.toLocaleDateString("he-IL") + " " + dateObj.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+            setLastCloudSyncTime(dateStr);
+            localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
+          }
+          setCloudStatusMsg({ text: `החיבור הצליח! נתוני המכשיר סונכרנו מול הענן עבור הקוד ${cleanCode}`, isError: false });
+        } else {
+          // If they chose no, cancel
+          setCloudStatusMsg({ text: "החיבור בוטל ללא דריסת נתונים מקומיים.", isError: false });
+        }
+      } else {
+        // Code doesn't exist, create it by uploading current state!
+        const confirmCreate = window.confirm(`קוד סנכרון זה חדש.\nהאם ברצונך ליצור עבורו סביבת עבודה בענן ולהעלות את הנתונים הנוכחיים שלך לשם?`);
+        if (confirmCreate) {
+          setSyncCode(cleanCode);
+          localStorage.setItem("electrician_sync_code", cleanCode);
+          await saveWorkspaceToCloud(cleanCode, {
+            catalog,
+            project,
+            archivedProjects: savedProjects,
+            drafts: savedDrafts,
+            customBranches: branches,
+            rates,
+            vatRate,
+          });
+          const now = new Date();
+          const dateStr = now.toLocaleDateString("he-IL") + " " + now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+          setLastCloudSyncTime(dateStr);
+          localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
+          setCloudStatusMsg({ text: `סביבת עבודה חדשה נוצרה בהצלחה בענן עם הקוד ${cleanCode}!`, isError: false });
+        } else {
+          setCloudStatusMsg({ text: "החיבור בוטל.", isError: false });
+        }
+      }
+    } catch (err) {
+      console.error("Cloud connection error:", err);
+      setCloudStatusMsg({ text: "שגיאה בהתחברות לענן. בדוק את הקוד או נסה שוב.", isError: true });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
   // 2. Load from localStorage on Mount
   useEffect(() => {
     try {
@@ -120,6 +242,45 @@ export default function App() {
         // Leave default initial project
         localStorage.setItem("electrician_project", JSON.stringify(project));
       }
+
+      // Load lifted states from localStorage
+      const storedProjects = localStorage.getItem("electrician_archived_projects");
+      if (storedProjects) {
+        setSavedProjects(JSON.parse(storedProjects));
+      }
+
+      const storedDrafts = localStorage.getItem("electrician_drafts");
+      if (storedDrafts) {
+        setSavedDrafts(JSON.parse(storedDrafts));
+      }
+
+      const storedBranches = localStorage.getItem("custom_branches_list");
+      if (storedBranches) {
+        setBranches(JSON.parse(storedBranches));
+      } else {
+        setBranches(DEFAULT_BRANCHES);
+      }
+
+      const rateElec = localStorage.getItem('rate_electrician');
+      const rateSnr = localStorage.getItem('rate_senior');
+      const rateAsst = localStorage.getItem('rate_with_assistant');
+      setRates({
+        rateElectrician: rateElec ? Number(rateElec) : 250,
+        rateSenior: rateSnr ? Number(rateSnr) : 350,
+        rateWithAssistant: rateAsst ? Number(rateAsst) : 380,
+      });
+
+      const storedVat = localStorage.getItem("electrician_vat_rate");
+      setVatRate(storedVat ? Number(storedVat) : 17);
+
+      const storedSyncCode = localStorage.getItem("electrician_sync_code");
+      if (storedSyncCode) setSyncCode(storedSyncCode);
+
+      const storedAutoSync = localStorage.getItem("electrician_auto_sync");
+      if (storedAutoSync) setAutoSync(storedAutoSync === "true");
+
+      const storedLastCloudSync = localStorage.getItem("electrician_last_cloud_sync_time");
+      if (storedLastCloudSync) setLastCloudSyncTime(storedLastCloudSync);
 
       const storedSync = localStorage.getItem("erco_last_sync");
       if (storedSync) {
@@ -166,6 +327,69 @@ export default function App() {
     }
   }, [project, isLoaded]);
 
+  // Lifted States Persisters
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem("electrician_archived_projects", JSON.stringify(savedProjects));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [savedProjects, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem("electrician_drafts", JSON.stringify(savedDrafts));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [savedDrafts, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem("custom_branches_list", JSON.stringify(branches));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [branches, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem("rate_electrician", rates.rateElectrician.toString());
+      localStorage.setItem("rate_senior", rates.rateSenior.toString());
+      localStorage.setItem("rate_with_assistant", rates.rateWithAssistant.toString());
+    } catch (e) {
+      console.error(e);
+    }
+  }, [rates, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem("electrician_vat_rate", vatRate.toString());
+    } catch (e) {
+      console.error(e);
+    }
+  }, [vatRate, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    localStorage.setItem("electrician_auto_sync", autoSync ? "true" : "false");
+  }, [autoSync, isLoaded]);
+
+  // Debounced Auto Sync to Cloud
+  useEffect(() => {
+    if (!isLoaded || !syncCode || !autoSync) return;
+    
+    const timer = setTimeout(() => {
+      uploadToCloud(syncCode);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [catalog, project, savedProjects, savedDrafts, branches, rates, vatRate, syncCode, autoSync, isLoaded]);
   // 4. Catalog Handlers
   const handleAddCatalogItem = (newItemData: Omit<CatalogItem, "id">) => {
     const newItem: CatalogItem = {
@@ -538,6 +762,19 @@ export default function App() {
                 <span className="hidden sm:inline">מדריך ותמחור</span>
                 <span className="sm:hidden">מדריך</span>
               </button>
+
+              {/* Cloud Sync & VAT Settings button */}
+              <button
+                onClick={() => setShowCloudPanel(!showCloudPanel)}
+                className={`flex items-center gap-1 px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-lg transition border border-dashed ${
+                  showCloudPanel
+                    ? "bg-amber-500 text-slate-950 border-amber-500 shadow-md"
+                    : "text-amber-400 border-amber-500/50 hover:text-white hover:bg-slate-800/60"
+                }`}
+              >
+                <Cloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>הגדרות מע״מ וסנכרון ענן</span>
+              </button>
             </nav>
 
           </div>
@@ -546,6 +783,136 @@ export default function App() {
 
       {/* 2. Main Workspace Layout */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 print:p-0">
+
+        {/* Collapsible Cloud & VAT Settings Panel */}
+        {showCloudPanel && (
+          <div className="mb-8 bg-slate-900 text-white rounded-2xl shadow-xl border border-slate-700 overflow-hidden animate-fade-in print:hidden">
+            <div className="bg-gradient-to-r from-slate-800 to-slate-950 p-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Settings className="w-5 h-5 text-amber-400 animate-spin-slow" />
+                <h3 className="font-bold text-sm">הגדרות סנכרון מכשירים ומע״מ</h3>
+              </div>
+              <button
+                onClick={() => setShowCloudPanel(false)}
+                className="text-slate-400 hover:text-white text-xs font-bold px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition"
+              >
+                סגור ✕
+              </button>
+            </div>
+            
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Right Column - Cloud Sync */}
+              <div className="space-y-4 border-l border-slate-800 pl-0 md:pl-8">
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-indigo-400" />
+                  <h4 className="font-bold text-sm text-indigo-200">סנכרון ענן וגיבוי רב-מכשירים</h4>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  הקלד מילת קוד/קוד סנכרון משלך (לדוגמה: <span className="font-mono text-indigo-300 font-bold">GOLAN-ELEC</span>) כדי לשמור את כל מחירון החומרים, העבודות הפעילות, והארכיון בענן של Firebase. הקלדת אותו קוד במכשיר אחר (טלפון, טאבלט, מחשב) תאפשר לך לעבוד ולסנכרן את המידע באופן מיידי!
+                </p>
+
+                <div className="space-y-3 pt-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="הזן קוד סנכרון אישי..."
+                      value={syncCode}
+                      onChange={(e) => setSyncCode(e.target.value)}
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-bold uppercase text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    />
+                    <button
+                      onClick={() => connectAndSyncCloud(syncCode)}
+                      disabled={isCloudSyncing}
+                      className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {isCloudSyncing ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Wifi className="w-3.5 h-3.5" />
+                      )}
+                      התחבר וסנכרן
+                    </button>
+                  </div>
+
+                  {syncCode && (
+                    <div className="space-y-2 bg-slate-950/60 p-3 rounded-lg border border-slate-800 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-semibold">קוד מחובר פעיל:</span>
+                        <span className="font-mono font-bold text-amber-400 uppercase">{syncCode}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-semibold">סנכרון ענן אוטומטי:</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={autoSync}
+                            onChange={(e) => setAutoSync(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-7 h-4 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[10px] text-slate-500">
+                        <span>סנכרון אחרון:</span>
+                        <span className="font-mono font-bold text-slate-400">{lastCloudSyncTime || "טרם סונכרן"}</span>
+                      </div>
+
+                      <button
+                        onClick={() => uploadToCloud(syncCode)}
+                        disabled={isCloudSyncing}
+                        className="w-full mt-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold transition flex items-center justify-center gap-1"
+                      >
+                        <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                        גבה עכשיו ידנית לענן
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Left Column - VAT & General Info */}
+              <div className="space-y-4 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Coins className="w-5 h-5 text-emerald-400" />
+                    <h4 className="font-bold text-sm text-emerald-200">עדכון ועריכת מע״מ כללי</h4>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    שנה כאן את שיעור המע״מ הכללי המשמש במחשבון. שינוי שיעור המע״מ יעודכן באופן מיידי בכל חלקי המערכת (סיכומי פרויקטים, הצעות מחיר, מסמכים להדפסה, דוחות חודשיים והודעות WhatsApp).
+                  </p>
+
+                  <div className="pt-2">
+                    <label className="text-xs text-slate-300 font-bold block mb-1.5">שיעור המע״מ המעודכן באחוזים (%):</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={vatRate}
+                        onChange={(e) => setVatRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                        className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-black text-center text-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <span className="text-xs text-slate-500 font-semibold">% מע״מ מעודכן כחוק</span>
+                    </div>
+                  </div>
+                </div>
+
+                {cloudStatusMsg && (
+                  <div className={`p-3 rounded-lg text-xs font-bold animate-fade-in ${
+                    cloudStatusMsg.isError 
+                      ? "bg-rose-950/50 text-rose-300 border border-rose-900/50" 
+                      : "bg-emerald-950/50 text-emerald-300 border border-emerald-900/50"
+                  }`}>
+                    {cloudStatusMsg.text}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Tab 1: Workspace Grid (Templates + Jobs + Live quote sidebar) */}
         {activeTab === "workspace" && (
@@ -667,12 +1034,16 @@ export default function App() {
                   onAddJob={handleAddJob}
                   onUpdateJob={handleUpdateJob}
                   onDeleteJob={handleDeleteJob}
+                  rates={rates}
+                  onUpdateRates={(newRates) => setRates(newRates)}
                 />
 
                 {/* Client & Project Details panel (now full-width and beautifully responsive) */}
                 <ClientDetailsManager
                   project={project}
                   onUpdateProject={handleUpdateProject}
+                  branches={branches}
+                  onUpdateBranches={(newBranches) => setBranches(newBranches)}
                 />
               </div>
 
@@ -685,6 +1056,7 @@ export default function App() {
                     onClearProject={handleClearProject}
                     onImportBackup={handleImportBackup}
                     onExportBackup={handleExportBackup}
+                    vatRate={vatRate}
                   />
                 </div>
               </div>
@@ -699,6 +1071,11 @@ export default function App() {
               currentProject={project}
               catalog={catalog}
               onLoadProject={handleLoadProject}
+              savedProjects={savedProjects}
+              setSavedProjects={setSavedProjects}
+              savedDrafts={savedDrafts}
+              setSavedDrafts={setSavedDrafts}
+              vatRate={vatRate}
             />
           </div>
         )}
@@ -789,7 +1166,7 @@ export default function App() {
 
       {/* 3. Printable Container (Always loaded in background, only displayed by @media print) */}
       <div id="print-area">
-        <PrintableInvoice project={project} />
+        <PrintableInvoice project={project} vatRate={vatRate} />
       </div>
     </div>
   );

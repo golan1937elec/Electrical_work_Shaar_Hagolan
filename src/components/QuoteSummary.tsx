@@ -16,6 +16,7 @@ interface QuoteSummaryProps {
   onClearProject: () => void;
   onImportBackup: (backupStr: string) => boolean;
   onExportBackup: () => string;
+  vatRate?: number;
 }
 
 export default function QuoteSummary({
@@ -24,6 +25,7 @@ export default function QuoteSummary({
   onClearProject,
   onImportBackup,
   onExportBackup,
+  vatRate = 17,
 }: QuoteSummaryProps) {
   const [copied, setCopied] = useState(false);
   const [importText, setImportText] = useState("");
@@ -47,7 +49,7 @@ export default function QuoteSummary({
   const totalLaborCost = jobs.reduce((sum, job) => sum + job.laborCost, 0);
 
   const subtotalClient = totalClientMaterialPrice + totalLaborCost;
-  const vatAmount = includeVat ? subtotalClient * 0.17 : 0;
+  const vatAmount = includeVat ? subtotalClient * (vatRate / 100) : 0;
   const grandTotalClient = subtotalClient + vatAmount;
 
   const totalMaterialProfit = totalClientMaterialPrice - totalWholesaleMaterialCost;
@@ -98,7 +100,7 @@ export default function QuoteSummary({
     msg += `• סה״כ ביניים: ₪${subtotalClient.toFixed(1)}\n`;
     
     if (includeVat) {
-      msg += `• מע״מ (17%): ₪${vatAmount.toFixed(1)}\n`;
+      msg += `• מע״מ (${vatRate}%): ₪${vatAmount.toFixed(1)}\n`;
       msg += `*סה״כ סופי לתשלום (כולל מע״מ): ₪${grandTotalClient.toFixed(1)}*\n`;
     } else {
       msg += `*סה״כ סופי לתשלום (ללא מע״מ): ₪${grandTotalClient.toFixed(1)}*\n`;
@@ -141,7 +143,7 @@ export default function QuoteSummary({
     msg += `סה״כ עבודה: ₪${totalLaborCost.toFixed(1)}\n`;
     msg += `סה״כ לפני מע״מ: ₪${subtotalClient.toFixed(1)}\n`;
     if (includeVat) {
-      msg += `מע״מ (17%): ₪${vatAmount.toFixed(1)}\n`;
+      msg += `מע״מ (${vatRate}%): ₪${vatAmount.toFixed(1)}\n`;
       msg += `סה״כ לתשלום (כולל מע״מ): ₪${grandTotalClient.toFixed(1)}\n`;
     } else {
       msg += `סה״כ לתשלום: ₪${grandTotalClient.toFixed(1)}\n`;
@@ -308,7 +310,7 @@ export default function QuoteSummary({
               {/* VAT Toggle */}
               <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200/80">
                 <div>
-                  <span className="text-xs font-bold text-slate-800 block">הוספת מע״מ כללי (17%)</span>
+                  <span className="text-xs font-bold text-slate-800 block">הוספת מע״מ כללי ({vatRate}%)</span>
                   <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">כבה לסיכום במזומן/ללא קבלה</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -343,7 +345,7 @@ export default function QuoteSummary({
 
               {includeVat && (
                 <div className="flex justify-between text-sm text-slate-500">
-                  <span className="font-semibold">מע״מ כחוק (17%):</span>
+                  <span className="font-semibold">מע״מ כחוק ({vatRate}%):</span>
                   <span className="font-mono text-slate-800">₪{vatAmount.toFixed(1)}</span>
                 </div>
               )}

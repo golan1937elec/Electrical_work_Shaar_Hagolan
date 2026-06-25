@@ -19,6 +19,12 @@ interface JobsManagerProps {
   onAddJob: (title: string, laborCost?: number, initialItems?: { sku: string; quantity: number }[]) => void;
   onUpdateJob: (updatedJob: Job) => void;
   onDeleteJob: (id: string) => void;
+  rates: {
+    rateElectrician: number;
+    rateSenior: number;
+    rateWithAssistant: number;
+  };
+  onUpdateRates: (newRates: { rateElectrician: number; rateSenior: number; rateWithAssistant: number }) => void;
 }
 
 export default function JobsManager({
@@ -29,6 +35,8 @@ export default function JobsManager({
   onAddJob,
   onUpdateJob,
   onDeleteJob,
+  rates,
+  onUpdateRates,
 }: JobsManagerProps) {
   const [newJobTitle, setNewJobTitle] = useState("");
   const [newJobLabor, setNewJobLabor] = useState("");
@@ -40,19 +48,9 @@ export default function JobsManager({
   const [customMaterialName, setCustomMaterialName] = useState("");
   const [customMaterialPrice, setCustomMaterialPrice] = useState("");
 
-  // Editable rate shortcuts with localStorage persistence
-  const [rateElectrician, setRateElectrician] = useState<number>(() => {
-    const saved = localStorage.getItem('rate_electrician');
-    return saved ? Number(saved) : 250;
-  });
-  const [rateSenior, setRateSenior] = useState<number>(() => {
-    const saved = localStorage.getItem('rate_senior');
-    return saved ? Number(saved) : 350;
-  });
-  const [rateWithAssistant, setRateWithAssistant] = useState<number>(() => {
-    const saved = localStorage.getItem('rate_with_assistant');
-    return saved ? Number(saved) : 380;
-  });
+  const rateElectrician = rates.rateElectrician;
+  const rateSenior = rates.rateSenior;
+  const rateWithAssistant = rates.rateWithAssistant;
 
   const [isEditingShortcuts, setIsEditingShortcuts] = useState(false);
   const [tempRateElectrician, setTempRateElectrician] = useState(rateElectrician.toString());
@@ -64,13 +62,11 @@ export default function JobsManager({
     const snr = Math.max(0, parseInt(tempRateSenior) || 0);
     const asst = Math.max(0, parseInt(tempRateWithAssistant) || 0);
 
-    setRateElectrician(elec);
-    setRateSenior(snr);
-    setRateWithAssistant(asst);
-
-    localStorage.setItem('rate_electrician', elec.toString());
-    localStorage.setItem('rate_senior', snr.toString());
-    localStorage.setItem('rate_with_assistant', asst.toString());
+    onUpdateRates({
+      rateElectrician: elec,
+      rateSenior: snr,
+      rateWithAssistant: asst,
+    });
 
     setIsEditingShortcuts(false);
   };

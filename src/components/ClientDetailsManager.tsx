@@ -5,9 +5,11 @@ import { User, Phone, Calendar, Layers, Settings, Plus, Trash2, X, RotateCcw } f
 interface ClientDetailsManagerProps {
   project: Project;
   onUpdateProject: (updatedProject: Project) => void;
+  branches: string[];
+  onUpdateBranches: (newBranches: string[]) => void;
 }
 
-const DEFAULT_BRANCHES = [
+export const DEFAULT_BRANCHES = [
   "בית הדר",
   "בית ירח",
   "בננות",
@@ -32,24 +34,10 @@ const DEFAULT_BRANCHES = [
 export default function ClientDetailsManager({
   project,
   onUpdateProject,
+  branches,
+  onUpdateBranches,
 }: ClientDetailsManagerProps) {
   const { clientName = "", clientPhone = "", branch = "", date = "" } = project;
-
-  // Persistent list of branches
-  const [branches, setBranches] = useState<string[]>(() => {
-    const saved = localStorage.getItem("custom_branches_list");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error("Failed to parse custom branches", e);
-      }
-    }
-    return DEFAULT_BRANCHES;
-  });
 
   const [selectValue, setSelectValue] = useState(() => {
     if (!branch) return "";
@@ -124,16 +112,14 @@ export default function ClientDetailsManager({
     }
 
     const updated = [...branches, cleanValue].sort((a, b) => a.localeCompare(b, "he"));
-    setBranches(updated);
-    localStorage.setItem("custom_branches_list", JSON.stringify(updated));
+    onUpdateBranches(updated);
     setNewBranchInput("");
     setErrorMsg("");
   };
 
   const handleRemoveBranch = (branchToRemove: string) => {
     const updated = branches.filter((b) => b !== branchToRemove);
-    setBranches(updated);
-    localStorage.setItem("custom_branches_list", JSON.stringify(updated));
+    onUpdateBranches(updated);
 
     // If the currently selected branch was removed, switch select value back to empty or custom
     if (branch === branchToRemove) {
@@ -146,8 +132,7 @@ export default function ClientDetailsManager({
 
   const handleResetBranches = () => {
     if (window.confirm("האם אתה בטוח שברצונך לשחזר את רשימת הענפים המקורית?")) {
-      setBranches(DEFAULT_BRANCHES);
-      localStorage.setItem("custom_branches_list", JSON.stringify(DEFAULT_BRANCHES));
+      onUpdateBranches(DEFAULT_BRANCHES);
       setErrorMsg("");
     }
   };
