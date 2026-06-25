@@ -134,9 +134,21 @@ export default function App() {
       setLastCloudSyncTime(dateStr);
       localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
       setCloudStatusMsg({ text: `הנתונים סונכרנו בהצלחה לענן תחת הקוד: ${codeToUse.trim().toUpperCase()}`, isError: false });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Cloud save error:", err);
-      setCloudStatusMsg({ text: "שגיאה בסנכרון לענן. ודא חיבור אינטרנט תקין.", isError: true });
+      let errorText = "שגיאה בסנכרון לענן. ודא חיבור אינטרנט תקין.";
+      try {
+        const msg = err?.message || "";
+        if (msg.startsWith("{") && msg.endsWith("}")) {
+          const parsed = JSON.parse(msg);
+          if (parsed.error) {
+            errorText = `שגיאה בסנכרון לענן: ${parsed.error}`;
+          }
+        }
+      } catch (e) {
+        // Fallback
+      }
+      setCloudStatusMsg({ text: errorText, isError: true });
     } finally {
       setIsCloudSyncing(false);
     }
@@ -205,9 +217,21 @@ export default function App() {
           setCloudStatusMsg({ text: "החיבור בוטל.", isError: false });
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Cloud connection error:", err);
-      setCloudStatusMsg({ text: "שגיאה בהתחברות לענן. בדוק את הקוד או נסה שוב.", isError: true });
+      let errorText = "שגיאה בהתחברות לענן. בדוק את הקוד או נסה שוב.";
+      try {
+        const msg = err?.message || "";
+        if (msg.startsWith("{") && msg.endsWith("}")) {
+          const parsed = JSON.parse(msg);
+          if (parsed.error) {
+            errorText = `שגיאה בהתחברות לענן: ${parsed.error}`;
+          }
+        }
+      } catch (e) {
+        // Fallback
+      }
+      setCloudStatusMsg({ text: errorText, isError: true });
     } finally {
       setIsCloudSyncing(false);
     }

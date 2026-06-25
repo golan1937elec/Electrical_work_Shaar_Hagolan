@@ -24,6 +24,50 @@ export interface WorkspaceData {
   lastUpdated: string;
 }
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: null,
+      email: null,
+      emailVerified: null,
+      isAnonymous: null,
+      tenantId: null,
+      providerInfo: []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 /**
  * Saves workspace data to Firestore.
  */
@@ -38,7 +82,11 @@ export async function saveWorkspaceToCloud(workspaceId: string, data: Omit<Works
     lastUpdated: new Date().toISOString()
   };
 
-  await setDoc(docRef, payload, { merge: true });
+  try {
+    await setDoc(docRef, payload, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `workspaces/${cleanId}`);
+  }
 }
 
 /**
@@ -49,10 +97,13 @@ export async function loadWorkspaceFromCloud(workspaceId: string): Promise<Works
   if (!cleanId) return null;
 
   const docRef = doc(db, "workspaces", cleanId);
-  const docSnap = await getDoc(docRef);
-
-  if (docSnap.exists()) {
-    return docSnap.data() as WorkspaceData;
+  try {
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data() as WorkspaceData;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `workspaces/${cleanId}`);
   }
-  return null;
 }
