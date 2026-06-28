@@ -67,7 +67,8 @@ export default function App() {
   const [autoSync, setAutoSync] = useState<boolean>(true);
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>("");
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
-  const [showCloudPanel, setShowCloudPanel] = useState<boolean>(false);
+  const [showCloudPanel, setShowCloudPanel] = useState<boolean>(true);
+  const [showVatPanel, setShowVatPanel] = useState<boolean>(false);
   const [cloudStatusMsg, setCloudStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const [cloudBackups, setCloudBackups] = useState<any[]>([]);
 
@@ -817,85 +818,151 @@ export default function App() {
         {/* 1. Header Navigation Panel */}
       <header className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-lg sticky top-0 z-10 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between min-h-18 py-3 flex-wrap md:flex-nowrap gap-4">
+          <div className="flex flex-row items-center justify-between py-2 md:py-3.5 gap-2">
             
             {/* Logo */}
-            <div className="flex items-center gap-3">
-              <Logo className="h-16 w-auto rounded-xl bg-white p-1.5 shadow-md border border-slate-700/50" />
-              <div>
-                <h1 className="text-sm sm:text-base md:text-lg font-black tracking-tight leading-tight flex flex-wrap items-center gap-1.5">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Logo className="h-8 xs:h-10 sm:h-12 md:h-16 w-auto rounded-lg md:rounded-xl bg-white p-1 md:p-1.5 shadow-md border border-slate-700/50 flex-shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-[11px] xs:text-xs sm:text-sm md:text-lg font-black tracking-tight leading-none md:leading-tight truncate">
                   מחשבון עבודות חשמליה שער הגולן
                 </h1>
-                <p className="text-[10px] sm:text-xs text-slate-300">מערכת תמחור חומרים ועבודות | סיטונאות Erco</p>
+                <p className="text-[8px] xs:text-[10px] sm:text-xs text-slate-300 mt-0.5 md:mt-1 leading-none truncate">מערכת תמחור חומרים ועבודות | סיטונאות Erco</p>
               </div>
             </div>
 
-            {/* Top Navigation Tabs */}
-            <nav className="flex flex-wrap gap-1">
+            {/* Desktop Navigation Tabs - Hidden on Mobile */}
+            <nav className="hidden md:flex flex-wrap justify-end gap-1">
               <button
-                onClick={() => setActiveTab("workspace")}
-                className={`flex items-center gap-1 px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-lg transition ${
-                  activeTab === "workspace"
+                onClick={() => {
+                  setActiveTab("workspace");
+                  setShowCloudPanel(false);
+                  setShowVatPanel(false);
+                }}
+                className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-lg transition ${
+                  activeTab === "workspace" && !showCloudPanel && !showVatPanel
                     ? "bg-indigo-600 text-white shadow-md"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                 }`}
               >
-                <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">עבודה פעילה וסיכום</span>
-                <span className="sm:hidden">עבודה</span>
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>עבודה פעילה וסיכום</span>
               </button>
 
               <button
-                onClick={() => setActiveTab("reports")}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-lg transition ${
-                  activeTab === "reports"
+                onClick={() => {
+                  setActiveTab("reports");
+                  setShowCloudPanel(false);
+                  setShowVatPanel(false);
+                }}
+                className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-lg transition ${
+                  activeTab === "reports" && !showCloudPanel && !showVatPanel
                     ? "bg-indigo-600 text-white shadow-md"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                 }`}
               >
-                <History className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                <History className="w-3.5 h-3.5 text-amber-400" />
                 <span>פרויקטים ודוחות</span>
               </button>
 
               <button
-                onClick={() => setActiveTab("catalog")}
-                className={`flex items-center gap-1 px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-lg transition ${
-                  activeTab === "catalog"
+                onClick={() => {
+                  setActiveTab("catalog");
+                  setShowCloudPanel(false);
+                  setShowVatPanel(false);
+                }}
+                className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-lg transition ${
+                  activeTab === "catalog" && !showCloudPanel && !showVatPanel
                     ? "bg-indigo-600 text-white shadow-md"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                 }`}
               >
-                <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">מחירון חומרים Erco</span>
-                <span className="sm:hidden">מחירון</span>
+                <Tag className="w-3.5 h-3.5" />
+                <span>מחירון חומרים Erco</span>
               </button>
 
               <button
-                onClick={() => setActiveTab("info")}
-                className={`flex items-center gap-1 px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-lg transition ${
-                  activeTab === "info"
+                onClick={() => {
+                  setActiveTab("info");
+                  setShowCloudPanel(false);
+                  setShowVatPanel(false);
+                }}
+                className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-lg transition ${
+                  activeTab === "info" && !showCloudPanel && !showVatPanel
                     ? "bg-indigo-600 text-white shadow-md"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                 }`}
               >
-                <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">מדריך ותמחור</span>
-                <span className="sm:hidden">מדריך</span>
+                <Info className="w-3.5 h-3.5" />
+                <span>מדריך ותמחור</span>
               </button>
 
-              {/* Cloud Sync & VAT Settings button */}
+              {/* Cloud Sync button */}
               <button
-                onClick={() => setShowCloudPanel(!showCloudPanel)}
-                className={`flex items-center gap-1 px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-lg transition border border-dashed ${
+                onClick={() => {
+                  setShowCloudPanel(!showCloudPanel);
+                  setShowVatPanel(false);
+                }}
+                className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-lg transition border border-dashed ${
                   showCloudPanel
                     ? "bg-amber-500 text-slate-950 border-amber-500 shadow-md"
                     : "text-amber-400 border-amber-500/50 hover:text-white hover:bg-slate-800/60"
                 }`}
               >
-                <Cloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>הגדרות מע״מ וסנכרון ענן</span>
+                <Cloud className="w-3.5 h-3.5" />
+                <span>סנכרון ענן</span>
+              </button>
+
+              {/* VAT Settings button */}
+              <button
+                onClick={() => {
+                  setShowVatPanel(!showVatPanel);
+                  setShowCloudPanel(false);
+                }}
+                className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-lg transition border border-dashed ${
+                  showVatPanel
+                    ? "bg-emerald-500 text-slate-950 border-emerald-500 shadow-md"
+                    : "text-emerald-400 border-emerald-500/50 hover:text-white hover:bg-slate-800/60"
+                }`}
+              >
+                <Coins className="w-3.5 h-3.5" />
+                <span>הגדרות מע״מ</span>
               </button>
             </nav>
+
+            {/* Mobile Navigation Dropdown */}
+            <div className="md:hidden relative flex-shrink-0">
+              <select
+                value={showCloudPanel ? "cloud" : showVatPanel ? "vat" : activeTab}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "cloud") {
+                    setShowCloudPanel(true);
+                    setShowVatPanel(false);
+                  } else if (val === "vat") {
+                    setShowVatPanel(true);
+                    setShowCloudPanel(false);
+                  } else {
+                    setActiveTab(val);
+                    setShowCloudPanel(false);
+                    setShowVatPanel(false);
+                  }
+                }}
+                className="bg-indigo-900/90 text-white text-[11px] xs:text-xs font-black rounded-lg py-1.5 pl-6 pr-2.5 border border-indigo-700/50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none text-right shadow-inner"
+              >
+                <option value="workspace">💼 עבודה וסיכום</option>
+                <option value="reports">📊 פרויקטים ודוחות</option>
+                <option value="catalog">🏷️ מחירון חומרים</option>
+                <option value="info">ℹ️ מדריך ותמחור</option>
+                <option value="cloud">☁️ סנכרון ענן</option>
+                <option value="vat">💰 הגדרות מע״מ</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 left-2 flex items-center text-indigo-300">
+                <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                </svg>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -904,13 +971,13 @@ export default function App() {
       {/* 2. Main Workspace Layout */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 print:p-0">
 
-        {/* Collapsible Cloud & VAT Settings Panel */}
+        {/* Collapsible Cloud Settings Panel */}
         {showCloudPanel && (
           <div className="mb-8 bg-slate-900 text-white rounded-2xl shadow-xl border border-slate-700 overflow-hidden animate-fade-in print:hidden">
             <div className="bg-gradient-to-r from-slate-800 to-slate-950 p-4 border-b border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Settings className="w-5 h-5 text-amber-400 animate-spin-slow" />
-                <h3 className="font-bold text-sm">הגדרות סנכרון מכשירים ומע״מ</h3>
+                <Cloud className="w-5 h-5 text-amber-400" />
+                <h3 className="font-bold text-sm">סנכרון ענן וגיבוי רב-מכשירים</h3>
               </div>
               <button
                 onClick={() => setShowCloudPanel(false)}
@@ -920,13 +987,8 @@ export default function App() {
               </button>
             </div>
             
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Right Column - Cloud Sync */}
-              <div className="space-y-4 border-l border-slate-800 pl-0 md:pl-8">
-                <div className="flex items-center gap-2">
-                  <Database className="w-5 h-5 text-indigo-400" />
-                  <h4 className="font-bold text-sm text-indigo-200">סנכרון ענן וגיבוי רב-מכשירים</h4>
-                </div>
+            <div className="p-6">
+              <div className="space-y-4">
                 <p className="text-xs text-slate-400 leading-relaxed">
                   הקלד מילת קוד/קוד סנכרון משלך (לדוגמה: <span className="font-mono text-indigo-300 font-bold">GOLAN-ELEC</span>) כדי לשמור את כל מחירון החומרים, העבודות הפעילות, והארכיון בענן של Firebase. הקלדת אותו קוד במכשיר אחר (טלפון, טאבלט, מחשב) תאפשר לך לעבוד ולסנכרן את המידע באופן מיידי!
                 </p>
@@ -1040,43 +1102,56 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Left Column - VAT & General Info */}
-              <div className="space-y-4 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Coins className="w-5 h-5 text-emerald-400" />
-                    <h4 className="font-bold text-sm text-emerald-200">עדכון ועריכת מע״מ כללי</h4>
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    שנה כאן את שיעור המע״מ הכללי המשמש במחשבון. שינוי שיעור המע״מ יעודכן באופן מיידי בכל חלקי המערכת (סיכומי פרויקטים, הצעות מחיר, מסמכים להדפסה, דוחות חודשיים והודעות WhatsApp).
-                  </p>
+              {cloudStatusMsg && (
+                <div className={`mt-4 p-3 rounded-lg text-xs font-bold animate-fade-in ${
+                  cloudStatusMsg.isError 
+                    ? "bg-rose-950/50 text-rose-300 border border-rose-900/50" 
+                    : "bg-emerald-950/50 text-emerald-300 border border-emerald-900/50"
+                }`}>
+                  {cloudStatusMsg.text}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-                  <div className="pt-2">
-                    <label className="text-xs text-slate-300 font-bold block mb-1.5">שיעור המע״מ המעודכן באחוזים (%):</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.5"
-                        value={vatRate}
-                        onChange={(e) => setVatRate(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-black text-center text-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <span className="text-xs text-slate-500 font-semibold">% מע״מ מעודכן כחוק</span>
-                    </div>
+        {/* Collapsible VAT Settings Panel */}
+        {showVatPanel && (
+          <div className="mb-8 bg-slate-900 text-white rounded-2xl shadow-xl border border-slate-700 overflow-hidden animate-fade-in print:hidden">
+            <div className="bg-gradient-to-r from-emerald-900 to-slate-950 p-4 border-b border-emerald-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Coins className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-bold text-sm">הגדרות מע״מ</h3>
+              </div>
+              <button
+                onClick={() => setShowVatPanel(false)}
+                className="text-slate-400 hover:text-white text-xs font-bold px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition"
+              >
+                סגור ✕
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  שנה כאן את שיעור המע״מ הכללי המשמש במחשבון. שינוי שיעור המע״מ יעודכן באופן מיידי בכל חלקי המערכת (סיכומי פרויקטים, הצעות מחיר, מסמכים להדפסה, דוחות חודשיים והודעות WhatsApp).
+                </p>
+
+                <div className="pt-2">
+                  <label className="text-xs text-slate-300 font-bold block mb-1.5">שיעור המע״מ המעודכן באחוזים (%):</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={vatRate}
+                      onChange={(e) => setVatRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-black text-center text-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs text-slate-500 font-semibold">% מע״מ מעודכן כחוק</span>
                   </div>
                 </div>
-
-                {cloudStatusMsg && (
-                  <div className={`p-3 rounded-lg text-xs font-bold animate-fade-in ${
-                    cloudStatusMsg.isError 
-                      ? "bg-rose-950/50 text-rose-300 border border-rose-900/50" 
-                      : "bg-emerald-950/50 text-emerald-300 border border-emerald-900/50"
-                  }`}>
-                    {cloudStatusMsg.text}
-                  </div>
-                )}
               </div>
             </div>
           </div>
