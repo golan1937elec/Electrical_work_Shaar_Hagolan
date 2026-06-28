@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, query, orderBy } from "firebase/firestore";
 import config from "../../firebase-applet-config.json";
 
 // Initialize Firebase App
@@ -21,6 +21,7 @@ export interface WorkspaceData {
     rateWithAssistant: number;
   };
   vatRate?: number;
+  laborTemplates?: any[];
   lastUpdated: string;
 }
 
@@ -105,5 +106,70 @@ export async function loadWorkspaceFromCloud(workspaceId: string): Promise<Works
     return null;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, `workspaces/${cleanId}`);
+  }
+}
+
+/**
+ * Saves a historical backup copy for a workspace.
+ */
+export async function saveWorkspaceBackup(workspaceId: string, data: Omit<WorkspaceData, "id" | "lastUpdated">): Promise<string> {
+  const cleanId = workspaceId.trim().toUpperCase();
+  if (!cleanId) throw new Error("Sync code is empty");
+
+  const backupId = new Date().getTime().toString();
+  const backupDocRef = doc(db, "workspaces", cleanId, "backups", backupId);
+  
+  const payload = {
+    id: backupId,
+    ...data,
+    lastUpdated: new Date().toISOString()
+  };
+
+  try {
+    await setDoc(backupDocRef, payload);
+    return backupId;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `workspaces/${cleanId}/backups/${backupId}`);
+    throw error;
+  }
+}
+
+/**
+ * Lists all backups for a workspace, ordered by date descending.
+ */
+export async function listWorkspaceBackups(workspaceId: string): Promise<any[]> {
+  const cleanId = workspaceId.trim().toUpperCase();
+  if (!cleanId) return [];
+
+  const backupsColRef = collection(db, "workspaces", cleanId, "backups");
+  const q = query(backupsColRef, orderBy("lastUpdated", "desc"));
+  try {
+    const querySnapshot = await getDocs(q);
+    const backups: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      backups.push({
+        backupId: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+    return backups;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `workspaces/${cleanId}/backups`);
+    return [];
+  }
+}
+
+/**
+ * Deletes a specific workspace backup.
+ */
+export async function deleteWorkspaceBackup(workspaceId: string, backupId: string): Promise<void> {
+  const cleanId = workspaceId.trim().toUpperCase();
+  if (!cleanId || !backupId) return;
+
+  const backupDocRef = doc(db, "workspaces", cleanId, "backups", backupId);
+  try {
+    await deleteDoc(backupDocRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `workspaces/${cleanId}/backups/${backupId}`);
   }
 }

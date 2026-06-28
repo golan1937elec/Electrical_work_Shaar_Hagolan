@@ -16,6 +16,7 @@ interface JobsManagerProps {
   catalog: CatalogItem[];
   globalMarkupPercent: number;
   includeVat: boolean;
+  vatRate?: number;
   onAddJob: (title: string, laborCost?: number, initialItems?: { sku: string; quantity: number }[]) => void;
   onUpdateJob: (updatedJob: Job) => void;
   onDeleteJob: (id: string) => void;
@@ -32,6 +33,7 @@ export default function JobsManager({
   catalog,
   globalMarkupPercent,
   includeVat,
+  vatRate = 17,
   onAddJob,
   onUpdateJob,
   onDeleteJob,
@@ -481,7 +483,7 @@ export default function JobsManager({
             );
 
             const jobSubtotal = totalMaterialClientPrice + job.laborCost;
-            const jobSubtotalVat = includeVat ? jobSubtotal * 1.17 : jobSubtotal;
+            const jobSubtotalVat = includeVat ? jobSubtotal * (1 + vatRate / 100) : jobSubtotal;
 
             const isSearching = activeSearchJobId === job.id;
 

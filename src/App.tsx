@@ -17,9 +17,9 @@ import Logo from "./components/Logo";
 import { 
   Zap, Briefcase, Tag, Info, Shield, HelpCircle, FileCheck, CheckCircle2, 
   RefreshCw, History, Sparkles, Save, FileDown, FileUp, CheckCircle, AlertCircle,
-  Cloud, CloudOff, Settings, Wifi, Database, Coins
+  Cloud, CloudOff, Settings, Wifi, Database, Coins, Trash2, Undo2
 } from "lucide-react";
-import { saveWorkspaceToCloud, loadWorkspaceFromCloud } from "./lib/firebase";
+import { saveWorkspaceToCloud, loadWorkspaceFromCloud, saveWorkspaceBackup, listWorkspaceBackups, deleteWorkspaceBackup } from "./lib/firebase";
 
 export default function App() {
   // 1. Initial State Hooks
@@ -60,6 +60,7 @@ export default function App() {
     rateWithAssistant: 380,
   });
   const [vatRate, setVatRate] = useState<number>(17);
+  const [laborTemplates, setLaborTemplates] = useState<CommonLaborPrice[]>([]);
 
   // Cloud Sync States
   const [syncCode, setSyncCode] = useState<string>("");
@@ -68,6 +69,7 @@ export default function App() {
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const [showCloudPanel, setShowCloudPanel] = useState<boolean>(false);
   const [cloudStatusMsg, setCloudStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
+  const [cloudBackups, setCloudBackups] = useState<any[]>([]);
 
   const triggerErcoSync = (manual = false) => {
     setIsSyncing(true);
@@ -115,12 +117,66 @@ export default function App() {
     }, 600);
   };
 
+  // Helper to fetch, delete and restore backups
+  const fetchCloudBackups = async (codeToUse = syncCode) => {
+    const cleanCode = codeToUse.trim().toUpperCase();
+    if (!cleanCode) return;
+    try {
+      const list = await listWorkspaceBackups(cleanCode);
+      setCloudBackups(list);
+    } catch (err) {
+      console.error("Failed to fetch cloud backups:", err);
+    }
+  };
+
+  const handleDeleteBackup = async (backupId: string) => {
+    if (!syncCode) return;
+    const confirmDelete = window.confirm("האם אתה בטוח שברצונך למחוק גיבוי זה מהענן? פעולה זו היא בלתי הפיכה ותחסוך מקום.");
+    if (!confirmDelete) return;
+    
+    setIsCloudSyncing(true);
+    try {
+      await deleteWorkspaceBackup(syncCode, backupId);
+      setCloudStatusMsg({ text: "הגיבוי נמחק בהצלחה מהענן.", isError: false });
+      await fetchCloudBackups(syncCode);
+    } catch (err) {
+      console.error("Failed to delete backup:", err);
+      setCloudStatusMsg({ text: "שגיאה במחיקת הגיבוי.", isError: true });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const handleRestoreBackup = async (backup: any) => {
+    const confirmRestore = window.confirm(`האם אתה בטוח שברצונך לשחזר את הגיבוי מתאריך ${new Date(Number(backup.backupId) || backup.lastUpdated).toLocaleString("he-IL")}?\nשים לב: פעולה זו תדרוס את הנתונים הנוכחיים במכשיר זה!`);
+    if (!confirmRestore) return;
+
+    setIsCloudSyncing(true);
+    try {
+      if (backup.catalog) setCatalog(backup.catalog);
+      if (backup.project) setProject(backup.project);
+      if (backup.archivedProjects) setSavedProjects(backup.archivedProjects);
+      if (backup.drafts) setSavedDrafts(backup.drafts);
+      if (backup.customBranches) setBranches(backup.customBranches);
+      if (backup.rates) setRates(backup.rates);
+      if (backup.vatRate !== undefined) setVatRate(backup.vatRate);
+      if (backup.laborTemplates) setLaborTemplates(backup.laborTemplates);
+
+      setCloudStatusMsg({ text: `השחזור מגיבוי היסטורי הושלם בהצלחה!`, isError: false });
+    } catch (err) {
+      console.error("Failed to restore backup:", err);
+      setCloudStatusMsg({ text: "שגיאה במהלך שחזור הגיבוי.", isError: true });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
   // Helper to trigger manual or background Cloud Upload
-  const uploadToCloud = async (codeToUse = syncCode) => {
+  const uploadToCloud = async (codeToUse = syncCode, isManual = false) => {
     if (!codeToUse || !codeToUse.trim()) return;
     setIsCloudSyncing(true);
     try {
-      await saveWorkspaceToCloud(codeToUse, {
+      const payload = {
         catalog,
         project,
         archivedProjects: savedProjects,
@@ -128,7 +184,16 @@ export default function App() {
         customBranches: branches,
         rates,
         vatRate,
-      });
+        laborTemplates,
+      };
+
+      await saveWorkspaceToCloud(codeToUse, payload);
+
+      if (isManual) {
+        await saveWorkspaceBackup(codeToUse, payload);
+        await fetchCloudBackups(codeToUse);
+      }
+
       const now = new Date();
       const dateStr = now.toLocaleDateString("he-IL") + " " + now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
       setLastCloudSyncTime(dateStr);
@@ -178,6 +243,7 @@ export default function App() {
           if (cloudData.customBranches) setBranches(cloudData.customBranches);
           if (cloudData.rates) setRates(cloudData.rates);
           if (cloudData.vatRate) setVatRate(cloudData.vatRate);
+          if (cloudData.laborTemplates) setLaborTemplates(cloudData.laborTemplates);
 
           setSyncCode(cleanCode);
           localStorage.setItem("electrician_sync_code", cleanCode);
@@ -189,6 +255,7 @@ export default function App() {
             localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
           }
           setCloudStatusMsg({ text: `החיבור הצליח! נתוני המכשיר סונכרנו מול הענן עבור הקוד ${cleanCode}`, isError: false });
+          await fetchCloudBackups(cleanCode);
         } else {
           // If they chose no, cancel
           setCloudStatusMsg({ text: "החיבור בוטל ללא דריסת נתונים מקומיים.", isError: false });
@@ -207,12 +274,14 @@ export default function App() {
             customBranches: branches,
             rates,
             vatRate,
+            laborTemplates,
           });
           const now = new Date();
           const dateStr = now.toLocaleDateString("he-IL") + " " + now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
           setLastCloudSyncTime(dateStr);
           localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
           setCloudStatusMsg({ text: `סביבת עבודה חדשה נוצרה בהצלחה בענן עם הקוד ${cleanCode}!`, isError: false });
+          await fetchCloudBackups(cleanCode);
         } else {
           setCloudStatusMsg({ text: "החיבור בוטל.", isError: false });
         }
@@ -278,6 +347,14 @@ export default function App() {
         setSavedDrafts(JSON.parse(storedDrafts));
       }
 
+      const storedTemplates = localStorage.getItem("electrician_labor_templates");
+      if (storedTemplates) {
+        setLaborTemplates(JSON.parse(storedTemplates));
+      } else {
+        setLaborTemplates(COMMON_LABOR_PRICES);
+        localStorage.setItem("electrician_labor_templates", JSON.stringify(COMMON_LABOR_PRICES));
+      }
+
       const storedBranches = localStorage.getItem("custom_branches_list");
       if (storedBranches) {
         setBranches(JSON.parse(storedBranches));
@@ -321,6 +398,16 @@ export default function App() {
       setIsLoaded(true);
     }
   }, []);
+
+  // Fetch Cloud Backups on load if syncCode is set and matches the currently connected code
+  useEffect(() => {
+    if (isLoaded && syncCode) {
+      const activeCode = localStorage.getItem("electrician_sync_code");
+      if (syncCode.trim().toUpperCase() === activeCode?.trim().toUpperCase()) {
+        fetchCloudBackups(syncCode);
+      }
+    }
+  }, [isLoaded, syncCode]);
 
   // Background Automatic Sync on Load
   useEffect(() => {
@@ -373,6 +460,15 @@ export default function App() {
   useEffect(() => {
     if (!isLoaded) return;
     try {
+      localStorage.setItem("electrician_labor_templates", JSON.stringify(laborTemplates));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [laborTemplates, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
       localStorage.setItem("custom_branches_list", JSON.stringify(branches));
     } catch (e) {
       console.error(e);
@@ -413,7 +509,7 @@ export default function App() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [catalog, project, savedProjects, savedDrafts, branches, rates, vatRate, syncCode, autoSync, isLoaded]);
+  }, [catalog, project, savedProjects, savedDrafts, branches, rates, vatRate, laborTemplates, syncCode, autoSync, isLoaded]);
   // 4. Catalog Handlers
   const handleAddCatalogItem = (newItemData: Omit<CatalogItem, "id">) => {
     const newItem: CatalogItem = {
@@ -884,13 +980,61 @@ export default function App() {
                       </div>
 
                       <button
-                        onClick={() => uploadToCloud(syncCode)}
+                        onClick={() => uploadToCloud(syncCode, true)}
                         disabled={isCloudSyncing}
                         className="w-full mt-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold transition flex items-center justify-center gap-1"
                       >
                         <Cloud className="w-3.5 h-3.5 text-amber-400" />
                         גבה עכשיו ידנית לענן
                       </button>
+
+                      {/* Cloud Backups History Section */}
+                      <div className="mt-4 pt-3 border-t border-slate-800">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <History className="w-3.5 h-3.5 text-indigo-400" />
+                          <span className="text-slate-300 font-bold text-xs">היסטוריית גיבויים קודמים בענן</span>
+                        </div>
+                        {cloudBackups.length === 0 ? (
+                          <p className="text-[10px] text-slate-500 italic py-1 text-center">אין גיבויים היסטוריים שמורים עבור קוד זה. לחץ על 'גבה עכשיו ידנית לענן' ליצירת גיבוי ראשון.</p>
+                        ) : (
+                          <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 pr-1">
+                            {cloudBackups.map((bk) => {
+                              const dateVal = Number(bk.backupId) || (bk.lastUpdated ? new Date(bk.lastUpdated).getTime() : Date.now());
+                              const backupDate = new Date(dateVal);
+                              const dateStr = backupDate.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                              const timeStr = backupDate.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+                              return (
+                                <div key={bk.backupId} className="flex items-center justify-between p-2 rounded bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 transition gap-2">
+                                  <div className="flex flex-col">
+                                    <span className="text-slate-200 font-medium font-mono text-[11px] leading-tight">
+                                      {dateStr} | {timeStr}
+                                    </span>
+                                    <span className="text-[9px] text-slate-500 font-mono">
+                                      ID: {bk.backupId}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => handleRestoreBackup(bk)}
+                                      title="שחזר גיבוי זה"
+                                      className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded transition cursor-pointer"
+                                    >
+                                      <Undo2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteBackup(bk.backupId)}
+                                      title="מחק גיבוי זה"
+                                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -969,6 +1113,8 @@ export default function App() {
               <div className="animate-fade-in transition-all">
                 <CommonLaborTemplates 
                   catalog={catalog} 
+                  templates={laborTemplates}
+                  onUpdateTemplates={setLaborTemplates}
                   onAddJobFromTemplate={handleAddJobFromTemplate} 
                 />
               </div>
@@ -1060,6 +1206,7 @@ export default function App() {
                   onDeleteJob={handleDeleteJob}
                   rates={rates}
                   onUpdateRates={(newRates) => setRates(newRates)}
+                  vatRate={vatRate}
                 />
 
                 {/* Client & Project Details panel (now full-width and beautifully responsive) */}
