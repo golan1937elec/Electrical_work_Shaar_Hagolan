@@ -66,9 +66,6 @@ export default function ProjectHistory({
   vatRate = 17,
 }: ProjectHistoryProps) {
   
-  // Form input to archive current project
-  const [archiveClientName, setArchiveClientName] = useState("");
-  const [archiveDate, setArchiveDate] = useState("");
   const [draftNameInput, setDraftNameInput] = useState("");
   
   // UI States
@@ -79,13 +76,6 @@ export default function ProjectHistory({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Set default form values from current project
-  useEffect(() => {
-    setArchiveClientName(currentProject.clientName || "");
-    const today = new Date().toISOString().split('T')[0];
-    setArchiveDate(currentProject.date || today);
-  }, [currentProject]);
-
   const triggerNotification = (msg: string, isError = false) => {
     if (isError) {
       setErrorMessage(msg);
@@ -94,28 +84,6 @@ export default function ProjectHistory({
       setSuccessMessage(msg);
       setTimeout(() => setSuccessMessage(""), 4000);
     }
-  };
-
-  // 1. Archive Current Active Project
-  const handleArchiveCurrentProject = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!archiveClientName.trim()) {
-      triggerNotification("אנא הזן שם לקוח לשמירת הפרויקט", true);
-      return;
-    }
-
-    const newArchived: Project = {
-      ...currentProject,
-      id: "archived_" + Math.random().toString(36).substr(2, 9),
-      clientName: archiveClientName.trim(),
-      date: archiveDate || new Date().toISOString().split('T')[0],
-    };
-
-    const updatedList = [newArchived, ...savedProjects];
-    setSavedProjects(updatedList);
-    localStorage.setItem("electrician_archived_projects", JSON.stringify(updatedList));
-    
-    triggerNotification("הפרויקט נשמר בהצלחה בארכיון הפרויקטים החודשי!");
   };
 
   // 2. Delete Archived Project
@@ -305,7 +273,7 @@ export default function ProjectHistory({
       )}
 
       {/* Draft Saving Tools & Auto-Save banner */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="max-w-3xl">
         
         {/* Save/Restore Draft Local & File */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
@@ -360,54 +328,6 @@ export default function ProjectHistory({
               </label>
             </div>
           </div>
-        </div>
-
-        {/* Current Project Archiving Box */}
-        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-2xl shadow-md p-6 text-white flex flex-col justify-between">
-          <div>
-            <div className="bg-indigo-500/30 text-indigo-300 font-bold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full w-max mb-3">
-              עבודה פעילה כעת
-            </div>
-            <h3 className="font-extrabold text-lg mb-2 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-indigo-400" />
-              שמירת הפרויקט הפעיל לארכיון חודשי
-            </h3>
-            <p className="text-slate-300 text-xs leading-relaxed mb-4">
-              סיימת את העבודה? שמור אותה בארכיון הפרויקטים שלך! הפרויקטים השמורים בארכיון יכללו בדוחות הרווח החודשיים שלך.
-            </p>
-
-            <div className="bg-white/10 border border-white/10 rounded-xl p-3 mb-4 space-y-1">
-              <div className="text-xs text-slate-300">פרטי הפרויקט הפעיל:</div>
-              <div className="font-bold text-sm text-indigo-200">
-                {currentProject.clientName || "לקוח ללא שם"} ({currentProject.jobs.length} עבודות כלולות)
-              </div>
-              <div className="font-mono text-xs text-emerald-400 font-bold">
-                רווח נקי משוער לחשמלאי: ₪{calculateProjectMetrics(currentProject, catalog, vatRate).netProfit.toFixed(1)}
-              </div>
-            </div>
-          </div>
-
-          <form onSubmit={handleArchiveCurrentProject} className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-white/10">
-            <div className="sm:col-span-2">
-              <input
-                type="text"
-                required
-                placeholder="אשר/עדכן שם הלקוח..."
-                value={archiveClientName}
-                onChange={(e) => setArchiveClientName(e.target.value)}
-                className="w-full text-xs px-3 py-2 border border-white/20 rounded-lg bg-white/10 text-white placeholder-slate-400 focus:bg-white/20 focus:ring-1 focus:ring-indigo-400"
-              />
-            </div>
-            <div>
-              <button
-                type="submit"
-                className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-xs rounded-lg transition cursor-pointer flex items-center justify-center gap-1"
-              >
-                <Save className="w-3.5 h-3.5" />
-                שמור בארכיון!
-              </button>
-            </div>
-          </form>
         </div>
 
       </div>

@@ -610,6 +610,22 @@ export default function App() {
     });
   };
 
+  const handleArchiveCurrentProject = (clientName: string, date: string): boolean => {
+    if (!clientName.trim()) return false;
+    
+    const newArchived: Project = {
+      ...project,
+      id: "archived_" + Math.random().toString(36).substr(2, 9),
+      clientName: clientName.trim(),
+      date: date || new Date().toISOString().split('T')[0],
+    };
+
+    const updatedList = [newArchived, ...savedProjects];
+    setSavedProjects(updatedList);
+    localStorage.setItem("electrician_archived_projects", JSON.stringify(updatedList));
+    return true;
+  };
+
   // 6. Job Add/Edit Handlers
   const handleAddJob = (
     title: string, 
@@ -1210,47 +1226,67 @@ export default function App() {
                 </div>
 
                 {/* Forms and Action Buttons */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full lg:w-auto">
                   <form onSubmit={(e) => handleSaveQuickDraft(e)} className="flex items-center gap-2 w-full sm:w-auto">
                     <input
                       type="text"
                       placeholder="שם הטיוטה (למשל: משפחת כהן)"
                       value={quickDraftName}
                       onChange={(e) => setQuickDraftName(e.target.value)}
-                      className="text-xs px-3 py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-indigo-500 w-full sm:w-56"
+                      className="text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-indigo-500 w-full sm:w-52"
                     />
                     <button
                       type="submit"
-                      className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-lg shadow-xs transition duration-150 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                      className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center gap-1.5 shrink-0 cursor-pointer"
                     >
                       <Save className="w-3.5 h-3.5" />
-                      שמור טיוטה באתר
+                      <span className="hidden sm:inline">שמור טיוטה באתר</span>
+                      <span className="sm:hidden">שמור</span>
                     </button>
                   </form>
 
                   <div className="h-4 w-[1px] bg-slate-300 hidden lg:block"></div>
 
-                  {/* Export button */}
-                  <button
-                    onClick={handleExportQuickDraftToFile}
-                    title="הורד קובץ גיבוי למחשב לשחזור עתידי"
-                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-black text-xs rounded-lg shadow-xs transition duration-150 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <FileDown className="w-3.5 h-3.5" />
-                    הורד כקובץ (.json)
-                  </button>
+                  {/* Secondary System Utility Buttons */}
+                  <div className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:items-center sm:gap-2">
+                    {/* Export button */}
+                    <button
+                      onClick={handleExportQuickDraftToFile}
+                      title="הורד קובץ גיבוי למחשב לשחזור עתידי"
+                      className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-slate-800 hover:bg-slate-900 text-white font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <FileDown className="w-3.5 h-3.5 shrink-0" />
+                      <span className="hidden sm:inline">הורד כקובץ (.json)</span>
+                      <span className="sm:hidden">ייצוא</span>
+                    </button>
 
-                  {/* Import button */}
-                  <label className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-black text-xs rounded-lg shadow-xs transition duration-150 flex items-center gap-1.5 cursor-pointer">
-                    <FileUp className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>טען קובץ גיבוי</span>
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={handleImportQuickDraftFromFile}
-                      className="hidden"
-                    />
-                  </label>
+                    {/* Import button */}
+                    <label className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center justify-center gap-1 cursor-pointer">
+                      <FileUp className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span className="hidden sm:inline">טען קובץ גיבוי</span>
+                      <span className="sm:hidden">ייבוא</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImportQuickDraftFromFile}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Clear / Start Fresh */}
+                    <button
+                      onClick={() => {
+                        if (confirm("האם אתה בטוח שברצונך לאפס ולמחוק את כל העבודות הפעילות? (מומלץ לבצע גיבוי לפני כן)")) {
+                          handleClearProject();
+                        }
+                      }}
+                      className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 shrink-0 animate-pulse" />
+                      <span className="hidden sm:inline">אפס והתחל פרויקט חדש</span>
+                      <span className="sm:hidden">איפוס</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1303,6 +1339,7 @@ export default function App() {
                     onImportBackup={handleImportBackup}
                     onExportBackup={handleExportBackup}
                     vatRate={vatRate}
+                    onArchiveProject={handleArchiveCurrentProject}
                   />
                 </div>
               </div>

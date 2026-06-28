@@ -7,7 +7,8 @@ import React, { useState } from "react";
 import { Project, Job } from "../types";
 import { 
   FileText, Percent, ShieldCheck, Printer, Share2, AlertCircle, 
-  Trash2, Copy, Check, Download, Upload, User, Phone, MapPin, Calendar, DollarSign, Settings
+  Trash2, Copy, Check, Download, Upload, User, Phone, MapPin, Calendar, DollarSign, Settings,
+  CheckCircle, Save
 } from "lucide-react";
 
 interface QuoteSummaryProps {
@@ -17,6 +18,7 @@ interface QuoteSummaryProps {
   onImportBackup: (backupStr: string) => boolean;
   onExportBackup: () => string;
   vatRate?: number;
+  onArchiveProject?: (clientName: string, date: string) => boolean;
 }
 
 export default function QuoteSummary({
@@ -26,6 +28,7 @@ export default function QuoteSummary({
   onImportBackup,
   onExportBackup,
   vatRate = 17,
+  onArchiveProject,
 }: QuoteSummaryProps) {
   const [copied, setCopied] = useState(false);
   const [importText, setImportText] = useState("");
@@ -33,6 +36,38 @@ export default function QuoteSummary({
   const [importStatus, setImportStatus] = useState<"idle" | "success" | "error">("idle");
 
   const { clientName, clientPhone, projectAddress, branch, date, globalMarkupPercent, includeVat, docType = "quote", jobs } = project;
+
+  const [showArchiveForm, setShowArchiveForm] = useState(false);
+  const [archiveClientName, setArchiveClientName] = useState(clientName || "");
+  const [archiveDate, setArchiveDate] = useState(date || new Date().toISOString().split('T')[0]);
+  const [archiveSuccessMsg, setArchiveSuccessMsg] = useState("");
+  const [archiveErrorMsg, setArchiveErrorMsg] = useState("");
+
+  React.useEffect(() => {
+    setArchiveClientName(clientName || "");
+    setArchiveDate(date || new Date().toISOString().split('T')[0]);
+  }, [clientName, date]);
+
+  const handleArchiveSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!archiveClientName.trim()) {
+      setArchiveErrorMsg("נא להזין שם לקוח");
+      return;
+    }
+    if (onArchiveProject) {
+      const success = onArchiveProject(archiveClientName, archiveDate);
+      if (success) {
+        setArchiveSuccessMsg("הפרויקט נשמר בהצלחה בארכיון!");
+        setArchiveErrorMsg("");
+        setTimeout(() => {
+          setShowArchiveForm(false);
+          setArchiveSuccessMsg("");
+        }, 3500);
+      } else {
+        setArchiveErrorMsg("שגיאה בשמירה לארכיון");
+      }
+    }
+  };
 
   // Global project calculations
   const totalWholesaleMaterialCost = jobs.reduce((totalSum, job) => {
@@ -400,19 +435,88 @@ export default function QuoteSummary({
                 {docType === "invoice" ? "הדפס חשבונית / שמור PDF" : "הדפס הצעת מחיר / שמור PDF"}
               </button>
 
-              {/* Clear / Start Fresh */}
+              {/* Save to Monthly Archive */}
               <button
                 onClick={() => {
-                  if (confirm("האם אתה בטוח שברצונך לאפס ולמחוק את כל העבודות הפעילות? (מומלץ לבצע גיבוי לפני כן)")) {
-                    onClearProject();
-                  }
+                  setShowArchiveForm(!showArchiveForm);
+                  setArchiveSuccessMsg("");
+                  setArchiveErrorMsg("");
                 }}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-sm rounded-xl transition"
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 font-bold text-sm rounded-xl transition shadow-sm ${
+                  showArchiveForm 
+                    ? "bg-amber-500 hover:bg-amber-600 text-slate-900" 
+                    : "bg-amber-100 hover:bg-amber-200 text-amber-900"
+                }`}
               >
-                <Trash2 className="w-4 h-4" />
-                אפס והתחל פרויקט חדש
+                <CheckCircle className="w-4 h-4" />
+                שמור פרויקט בארכיון
               </button>
             </div>
+
+            {/* Collapsible Archive Form */}
+            {showArchiveForm && (
+              <form onSubmit={handleArchiveSubmit} className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-4 rounded-xl border border-indigo-500/30 space-y-3 animate-fade-in">
+                <div className="flex items-center justify-between border-b border-indigo-500/20 pb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-amber-400">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>שמירת פרויקט זה לארכיון פרויקטים</span>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setShowArchiveForm(false)} 
+                    className="text-slate-400 hover:text-white text-[10px] bg-slate-800 hover:bg-slate-700 px-1.5 py-0.5 rounded cursor-pointer"
+                  >
+                    ביטול
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-300 mb-1">שם הלקוח לארכיון:</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="הקלד שם לקוח..."
+                      value={archiveClientName}
+                      onChange={(e) => setArchiveClientName(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-slate-700 rounded-lg bg-slate-950 text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-300 mb-1">תאריך פרויקט:</label>
+                    <input
+                      type="date"
+                      required
+                      value={archiveDate}
+                      onChange={(e) => setArchiveDate(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-slate-700 rounded-lg bg-slate-950 text-white focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {archiveSuccessMsg && (
+                  <div className="p-2 bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs font-bold rounded">
+                    {archiveSuccessMsg}
+                  </div>
+                )}
+                {archiveErrorMsg && (
+                  <div className="p-2 bg-rose-950/80 border border-rose-800 text-rose-300 text-xs font-bold rounded">
+                    {archiveErrorMsg}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-lg transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    שמור בארכיון פרויקטים
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Data management (Backup and Import) */}
             <div className="pt-2">
