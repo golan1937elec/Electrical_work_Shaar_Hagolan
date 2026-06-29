@@ -21,6 +21,104 @@ import {
 } from "lucide-react";
 import { saveWorkspaceToCloud, loadWorkspaceFromCloud, saveWorkspaceBackup, listWorkspaceBackups, deleteWorkspaceBackup } from "./lib/firebase";
 
+// Helper functions to migrate old SKUs to new 7-digit SKUs
+function migrateCatalog(rawCatalog: CatalogItem[]): CatalogItem[] {
+  if (!Array.isArray(rawCatalog)) return INITIAL_CATALOG;
+  
+  // 1. Map old SKUs to new ones by matching with INITIAL_CATALOG by ID
+  let migrated = rawCatalog.map((item) => {
+    const matchById = INITIAL_CATALOG.find((init) => init.id === item.id);
+    if (matchById) {
+      return {
+        ...item,
+        sku: matchById.sku,
+        category: matchById.category,
+        brand: matchById.brand || item.brand,
+      };
+    }
+    // Fallback: match by name (case-insensitive and trimmed)
+    const matchByName = INITIAL_CATALOG.find((init) => init.name.trim().toLowerCase() === item.name.trim().toLowerCase());
+    if (matchByName) {
+      return {
+        ...item,
+        sku: matchByName.sku,
+        category: matchByName.category,
+        brand: matchByName.brand || item.brand,
+      };
+    }
+    return item;
+  });
+
+  // 2. Remove duplicate items by SKU (keeping custom ones if they exist, or the latest ones)
+  const uniqueItemsMap = new Map<string, CatalogItem>();
+  migrated.forEach((item) => {
+    if (!uniqueItemsMap.has(item.sku)) {
+      uniqueItemsMap.set(item.sku, item);
+    } else {
+      const existing = uniqueItemsMap.get(item.sku)!;
+      // Prefer keeping items with non-default IDs (e.g., custom)
+      if (existing.id.startsWith("cust-") && !item.id.startsWith("cust-")) {
+        // Keep existing custom
+      } else {
+        uniqueItemsMap.set(item.sku, item);
+      }
+    }
+  });
+  migrated = Array.from(uniqueItemsMap.values());
+
+  // 3. Merge missing default items from INITIAL_CATALOG by SKU
+  const parsedSkus = new Set(migrated.map((item) => item.sku));
+  const missingItems = INITIAL_CATALOG.filter((item) => !parsedSkus.has(item.sku));
+  return [...migrated, ...missingItems];
+}
+
+function migrateProject(proj: Project): Project {
+  if (!proj || !proj.jobs) return proj;
+  const migratedJobs = proj.jobs.map((job) => {
+    if (!job.items) return job;
+    const migratedItems = job.items.map((item) => {
+      // Find the corresponding item in INITIAL_CATALOG by catalogId or name or SKU
+      const match = INITIAL_CATALOG.find(
+        (init) => init.id === item.catalogId || init.sku === item.sku || init.name === item.name
+      );
+      if (match) {
+        return {
+          ...item,
+          sku: match.sku,
+          name: match.name,
+        };
+      }
+      return item;
+    });
+    return {
+      ...job,
+      items: migratedItems,
+    };
+  });
+  return {
+    ...proj,
+    jobs: migratedJobs,
+  };
+}
+
+function migrateSavedProjects(projects: Project[]): Project[] {
+  if (!Array.isArray(projects)) return [];
+  return projects.map(migrateProject);
+}
+
+function migrateDrafts(drafts: any[]): any[] {
+  if (!Array.isArray(drafts)) return [];
+  return drafts.map((draft) => {
+    if (draft && draft.project) {
+      return {
+        ...draft,
+        project: migrateProject(draft.project),
+      };
+    }
+    return draft;
+  });
+}
+
 export default function App() {
   // 1. Initial State Hooks
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
@@ -188,10 +286,10 @@ export default function App() {
 
     setIsCloudSyncing(true);
     try {
-      if (backup.catalog) setCatalog(backup.catalog);
-      if (backup.project) setProject(backup.project);
-      if (backup.archivedProjects) setSavedProjects(backup.archivedProjects);
-      if (backup.drafts) setSavedDrafts(backup.drafts);
+      if (backup.catalog) setCatalog(migrateCatalog(backup.catalog));
+      if (backup.project) setProject(migrateProject(backup.project));
+      if (backup.archivedProjects) setSavedProjects(migrateSavedProjects(backup.archivedProjects));
+      if (backup.drafts) setSavedDrafts(migrateDrafts(backup.drafts));
       if (backup.customBranches) setBranches(backup.customBranches);
       if (backup.rates) setRates(backup.rates);
       if (backup.vatRate !== undefined) setVatRate(backup.vatRate);
@@ -276,10 +374,10 @@ export default function App() {
       const cloudData = await loadWorkspaceFromCloud(cleanCode);
       if (cloudData) {
         // Overwrite local state with cloud state immediately without confirmation
-        if (cloudData.catalog) setCatalog(cloudData.catalog);
-        if (cloudData.project) setProject(cloudData.project);
-        if (cloudData.archivedProjects) setSavedProjects(cloudData.archivedProjects);
-        if (cloudData.drafts) setSavedDrafts(cloudData.drafts);
+        if (cloudData.catalog) setCatalog(migrateCatalog(cloudData.catalog));
+        if (cloudData.project) setProject(migrateProject(cloudData.project));
+        if (cloudData.archivedProjects) setSavedProjects(migrateSavedProjects(cloudData.archivedProjects));
+        if (cloudData.drafts) setSavedDrafts(migrateDrafts(cloudData.drafts));
         if (cloudData.customBranches) setBranches(cloudData.customBranches);
         if (cloudData.rates) setRates(cloudData.rates);
         if (cloudData.vatRate) setVatRate(cloudData.vatRate);
@@ -346,17 +444,9 @@ export default function App() {
       const storedCatalog = localStorage.getItem("electrician_catalog");
       if (storedCatalog) {
         const parsed = JSON.parse(storedCatalog) as CatalogItem[];
-        // Merge missing default items from INITIAL_CATALOG by SKU
-        const parsedSkus = new Set(parsed.map((item) => item.sku));
-        const missingItems = INITIAL_CATALOG.filter((item) => !parsedSkus.has(item.sku));
-        
-        if (missingItems.length > 0) {
-          const merged = [...parsed, ...missingItems];
-          setCatalog(merged);
-          localStorage.setItem("electrician_catalog", JSON.stringify(merged));
-        } else {
-          setCatalog(parsed);
-        }
+        const migrated = migrateCatalog(parsed);
+        setCatalog(migrated);
+        localStorage.setItem("electrician_catalog", JSON.stringify(migrated));
       } else {
         setCatalog(INITIAL_CATALOG);
         localStorage.setItem("electrician_catalog", JSON.stringify(INITIAL_CATALOG));
@@ -364,7 +454,7 @@ export default function App() {
 
       const storedProject = localStorage.getItem("electrician_project");
       if (storedProject) {
-        setProject(JSON.parse(storedProject));
+        setProject(migrateProject(JSON.parse(storedProject)));
       } else {
         // Leave default initial project
         localStorage.setItem("electrician_project", JSON.stringify(project));
@@ -373,12 +463,12 @@ export default function App() {
       // Load lifted states from localStorage
       const storedProjects = localStorage.getItem("electrician_archived_projects");
       if (storedProjects) {
-        setSavedProjects(JSON.parse(storedProjects));
+        setSavedProjects(migrateSavedProjects(JSON.parse(storedProjects)));
       }
 
       const storedDrafts = localStorage.getItem("electrician_drafts");
       if (storedDrafts) {
-        setSavedDrafts(JSON.parse(storedDrafts));
+        setSavedDrafts(migrateDrafts(JSON.parse(storedDrafts)));
       }
 
       const storedTemplates = localStorage.getItem("electrician_labor_templates");
@@ -612,8 +702,9 @@ export default function App() {
       }
 
       if (importedCatalog.length > 0) {
-        setCatalog(importedCatalog);
-        localStorage.setItem("electrician_catalog", JSON.stringify(importedCatalog));
+        const migrated = migrateCatalog(importedCatalog);
+        setCatalog(migrated);
+        localStorage.setItem("electrician_catalog", JSON.stringify(migrated));
         return true;
       }
       return false;
@@ -737,8 +828,8 @@ export default function App() {
     try {
       const parsed = JSON.parse(backupStr);
       if (parsed.app === "electrician-pricing-calculator") {
-        if (parsed.catalog) setCatalog(parsed.catalog);
-        if (parsed.project) setProject(parsed.project);
+        if (parsed.catalog) setCatalog(migrateCatalog(parsed.catalog));
+        if (parsed.project) setProject(migrateProject(parsed.project));
         return true;
       }
       return false;
@@ -831,8 +922,9 @@ export default function App() {
       try {
         const json = JSON.parse(event.target?.result as string);
         if (json.app === "electrician-pricing-calculator" && json.project) {
-          setProject(json.project);
-          localStorage.setItem("electrician_project", JSON.stringify(json.project));
+          const migratedProj = migrateProject(json.project);
+          setProject(migratedProj);
+          localStorage.setItem("electrician_project", JSON.stringify(migratedProj));
           setDraftMessageIsError(false);
           setDraftMessage("הטיוטה נטענה מקובץ JSON בהצלחה לעבודה הפעילה!");
           setTimeout(() => setDraftMessage(""), 6000);
