@@ -67,10 +67,13 @@ export default function App() {
   const [autoSync, setAutoSync] = useState<boolean>(true);
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>("");
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
-  const [showCloudPanel, setShowCloudPanel] = useState<boolean>(true);
+  const [showCloudPanel, setShowCloudPanel] = useState<boolean>(false);
   const [showVatPanel, setShowVatPanel] = useState<boolean>(false);
   const [cloudStatusMsg, setCloudStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const [cloudBackups, setCloudBackups] = useState<any[]>([]);
+
+  const lastBackupTimeRef = React.useRef<number>(0);
+  const [isGateUnlocked, setIsGateUnlocked] = useState<boolean>(false);
 
   const triggerErcoSync = (manual = false) => {
     setIsSyncing(true);
@@ -190,8 +193,15 @@ export default function App() {
 
       await saveWorkspaceToCloud(codeToUse, payload);
 
-      if (isManual) {
+      // Automated session backups: Always create on manual button click,
+      // OR on background auto-syncs if more than 60 seconds of typing/working has elapsed.
+      const nowMs = Date.now();
+      const timeElapsed = nowMs - lastBackupTimeRef.current;
+      const shouldCreateBackup = isManual || (timeElapsed > 60000) || (lastBackupTimeRef.current === 0);
+
+      if (shouldCreateBackup) {
         await saveWorkspaceBackup(codeToUse, payload);
+        lastBackupTimeRef.current = nowMs;
         await fetchCloudBackups(codeToUse);
       }
 
@@ -221,11 +231,11 @@ export default function App() {
   };
 
   // Helper to connect and sync with a cloud code
-  const connectAndSyncCloud = async (codeToUse: string) => {
+  const connectAndSyncCloud = async (codeToUse: string): Promise<boolean> => {
     const cleanCode = codeToUse.trim().toUpperCase();
     if (!cleanCode) {
       setCloudStatusMsg({ text: "נא להזין קוד סנכרון תקין", isError: true });
-      return;
+      return false;
     }
 
     setIsCloudSyncing(true);
@@ -257,9 +267,11 @@ export default function App() {
           }
           setCloudStatusMsg({ text: `החיבור הצליח! נתוני המכשיר סונכרנו מול הענן עבור הקוד ${cleanCode}`, isError: false });
           await fetchCloudBackups(cleanCode);
+          return true;
         } else {
           // If they chose no, cancel
           setCloudStatusMsg({ text: "החיבור בוטל ללא דריסת נתונים מקומיים.", isError: false });
+          return false;
         }
       } else {
         // Code doesn't exist, create it by uploading current state!
@@ -283,8 +295,10 @@ export default function App() {
           localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
           setCloudStatusMsg({ text: `סביבת עבודה חדשה נוצרה בהצלחה בענן עם הקוד ${cleanCode}!`, isError: false });
           await fetchCloudBackups(cleanCode);
+          return true;
         } else {
           setCloudStatusMsg({ text: "החיבור בוטל.", isError: false });
+          return false;
         }
       }
     } catch (err: any) {
@@ -302,6 +316,7 @@ export default function App() {
         // Fallback
       }
       setCloudStatusMsg({ text: errorText, isError: true });
+      return false;
     } finally {
       setIsCloudSyncing(false);
     }
@@ -819,11 +834,207 @@ export default function App() {
     e.target.value = "";
   };
 
+  const [gatewayInputCode, setGatewayInputCode] = useState<string>("");
+  const [hasSavedCode, setHasSavedCode] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isLoaded) {
+      const stored = localStorage.getItem("electrician_sync_code");
+      if (stored) {
+        setHasSavedCode(true);
+        setGatewayInputCode(stored);
+      }
+    }
+  }, [isLoaded]);
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans text-slate-500" dir="rtl">
         <Zap className="w-12 h-12 text-indigo-600 animate-bounce mb-3" />
         <p className="font-bold text-sm">טוען נתונים מהארכיון...</p>
+      </div>
+    );
+  }
+
+  if (!isGateUnlocked) {
+    const savedCode = localStorage.getItem("electrician_sync_code");
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 flex flex-col items-center justify-center p-4 selection:bg-amber-500 selection:text-slate-950 font-sans relative overflow-hidden" dir="rtl">
+        {/* Animated background lights */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl -z-10 animate-pulse delay-75"></div>
+
+        <div className="w-full max-w-lg bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-indigo-500/30 p-6 md:p-8 space-y-6 text-center">
+          
+          {/* Logo & Header */}
+          <div className="space-y-3">
+            <div className="relative inline-block">
+              <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-xl animate-pulse"></div>
+              <div className="relative bg-slate-950 p-4 rounded-full border border-indigo-500/30">
+                <Cloud className="w-12 h-12 text-amber-400 animate-bounce" />
+              </div>
+            </div>
+            
+            <h1 className="text-xl md:text-2xl font-black tracking-tight text-white leading-tight">
+              מחשבון עבודות חשמליה שער הגולן
+            </h1>
+            <p className="text-xs md:text-sm text-slate-300 font-bold max-w-sm mx-auto leading-relaxed">
+              מערכת תמחור חומרים ועבודות | סיטונאות Erco
+            </p>
+          </div>
+
+          <div className="border-t border-indigo-500/20 my-2"></div>
+
+          {/* Core Panel Content */}
+          {hasSavedCode && savedCode ? (
+            /* Return User Setup */
+            <div className="space-y-5 animate-fade-in">
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">ברוך השב! נמצא קוד סנכרון שמור במכשיר:</span>
+                <div className="bg-slate-950/80 border-2 border-dashed border-amber-500/50 p-4 rounded-xl text-center">
+                  <span className="font-mono text-2xl font-black tracking-wider text-amber-400">{savedCode}</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                  הקוד מאפשר לך לסנכרן את כל המידע (קטלוג, הצעות מחיר ופרויקטים) מול הענן באופן מיידי ורב-מכשירי.
+                </p>
+              </div>
+
+              {cloudStatusMsg && (
+                <div className={`p-3 text-xs font-bold rounded-lg border ${
+                  cloudStatusMsg.isError 
+                    ? "bg-rose-950/80 border-rose-800 text-rose-300" 
+                    : "bg-emerald-950/80 border-emerald-800 text-emerald-300"
+                }`}>
+                  {cloudStatusMsg.text}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={async () => {
+                    const ok = await connectAndSyncCloud(savedCode);
+                    if (ok) {
+                      setIsGateUnlocked(true);
+                    }
+                  }}
+                  disabled={isCloudSyncing}
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/10 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isCloudSyncing ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wifi className="w-4 h-4" />
+                  )}
+                  סנכרן נתונים והיכנס לסביבת העבודה
+                </button>
+
+                <button
+                  onClick={() => setIsGateUnlocked(true)}
+                  disabled={isCloudSyncing}
+                  className="w-full py-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  המשך לעבודה ישירה (לא מקוון / נתונים מקומיים)
+                </button>
+
+                <button
+                  onClick={() => setHasSavedCode(false)}
+                  disabled={isCloudSyncing}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-bold underline transition py-1 cursor-pointer"
+                >
+                  התחבר עם קוד סנכרון אחר
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* First Time / Switch Setup */
+            <div className="space-y-4 animate-fade-in">
+              <div className="space-y-1">
+                <h3 className="text-sm font-extrabold text-indigo-300">חיבור או יצירת קוד סנכרון ענן</h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed max-w-sm mx-auto">
+                  הקלד מילת קוד אישית משלך (לדוגמה: <span className="font-mono text-amber-400">GOLAN-ELEC</span>) כדי לייבא נתונים קיימים או ליצור סביבת עבודה חדשה ומגובה בענן.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="הקלד קוד סנכרון אישי..."
+                    value={gatewayInputCode}
+                    onChange={(e) => setGatewayInputCode(e.target.value.toUpperCase())}
+                    className="w-full text-center font-mono text-lg font-bold tracking-wider py-3 border border-indigo-500/30 rounded-xl bg-slate-950 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase"
+                  />
+                </div>
+
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const randomCode = "ELEC-" + Math.floor(1000 + Math.random() * 9000);
+                      setGatewayInputCode(randomCode);
+                    }}
+                    className="text-[11px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    צור קוד סנכרון חדש אקראי
+                  </button>
+                </div>
+              </div>
+
+              {cloudStatusMsg && (
+                <div className={`p-3 text-xs font-bold rounded-lg border ${
+                  cloudStatusMsg.isError 
+                    ? "bg-rose-950/80 border-rose-800 text-rose-300" 
+                    : "bg-emerald-950/80 border-emerald-800 text-emerald-300"
+                }`}>
+                  {cloudStatusMsg.text}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  onClick={async () => {
+                    const ok = await connectAndSyncCloud(gatewayInputCode);
+                    if (ok) {
+                      setIsGateUnlocked(true);
+                    }
+                  }}
+                  disabled={isCloudSyncing || !gatewayInputCode.trim()}
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-slate-950 font-black text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isCloudSyncing ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wifi className="w-4 h-4" />
+                  )}
+                  התחבר וסנכרן נתונים מהענן
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (window.confirm("שים לב: ללא חיבור קוד סנכרון, המידע שלך יישמר רק בדפדפן המקומי של מכשיר זה ועלול להימחק אם תנקה היסטוריית גלישה.\nהאם ברצונך להמשיך עבודה מקומית ללא גיבוי ענן?")) {
+                      setIsGateUnlocked(true);
+                    }
+                  }}
+                  disabled={isCloudSyncing}
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-400 font-bold text-xs rounded-xl border border-slate-800 hover:border-slate-700 transition cursor-pointer"
+                >
+                  המשך ללא סנכרון (עבודה מקומית בלבד)
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-indigo-500/10 pt-4 flex items-center justify-between text-[10px] text-slate-500">
+            <span className="flex items-center gap-1">
+              <Database className="w-3.5 h-3.5 text-indigo-500" />
+              סנכרון מאובטח מול Firebase
+            </span>
+            <span>מחשבון שער הגולן v2.4</span>
+          </div>
+
+        </div>
       </div>
     );
   }
