@@ -17,7 +17,7 @@ import Logo from "./components/Logo";
 import { 
   Zap, Briefcase, Tag, Info, Shield, HelpCircle, FileCheck, CheckCircle2, 
   RefreshCw, History, Sparkles, Save, FileDown, FileUp, CheckCircle, AlertCircle,
-  Cloud, CloudOff, Settings, Wifi, Database, Coins, Trash2, Undo2
+  Cloud, CloudOff, Settings, Wifi, Database, Coins, Trash2, Undo2, ChevronDown
 } from "lucide-react";
 import { saveWorkspaceToCloud, loadWorkspaceFromCloud, saveWorkspaceBackup, listWorkspaceBackups, deleteWorkspaceBackup } from "./lib/firebase";
 
@@ -142,6 +142,7 @@ export default function App() {
   const [quickDraftName, setQuickDraftName] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const [draftMessageIsError, setDraftMessageIsError] = useState(false);
+  const [showAdvancedBackup, setShowAdvancedBackup] = useState(false);
 
   // 1b. Erco Price Auto-Sync State
   const [isSyncing, setIsSyncing] = useState(false);
@@ -1519,88 +1520,99 @@ export default function App() {
               </div>
             )}
 
-            {/* Quick Draft & Backup Toolbar (Always visible on top of main workspace) */}
-            <div className="bg-gradient-to-r from-slate-50 to-indigo-50/40 rounded-2xl p-4 sm:p-5 border border-indigo-100/80 shadow-sm space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                {/* Title & Info */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100/80 flex items-center justify-center shrink-0">
-                    <Save className="w-5 h-5 text-indigo-700" />
+            {/* Quick Draft & Backup Toolbar (Optimized & Compact) */}
+            <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-xs space-y-3">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                {/* Title & Info (Very small and clean) */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                    <Save className="w-4 h-4 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900 text-sm">שמירה וגיבוי של טיוטת העבודה הנוכחית</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">שמור את המצב הנוכחי באתר או הורד קובץ גיבוי פיזי למחשב למניעת אובדן נתונים בטעות</p>
+                    <h3 className="font-bold text-slate-800 text-xs sm:text-sm">שמירה מהירה של העבודה הפעילה</h3>
+                    <p className="text-[10px] text-slate-400 font-medium">שמור טיוטה מהירה באתר או פתח פעולות גיבוי מתקדמות</p>
                   </div>
                 </div>
 
-                {/* Forms and Action Buttons */}
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full lg:w-auto">
-                  <form onSubmit={(e) => handleSaveQuickDraft(e)} className="flex items-center gap-2 w-full sm:w-auto">
+                {/* Save Input & Toggle */}
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto">
+                  <form onSubmit={(e) => handleSaveQuickDraft(e)} className="flex items-center gap-1.5 w-full sm:w-auto">
                     <input
                       type="text"
                       placeholder="שם הטיוטה (למשל: משפחת כהן)"
                       value={quickDraftName}
                       onChange={(e) => setQuickDraftName(e.target.value)}
-                      className="text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-indigo-500 w-full sm:w-52"
+                      className="text-[11px] sm:text-xs px-2.5 py-1.5 sm:py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-indigo-500 w-full sm:w-48 outline-none"
                     />
                     <button
                       type="submit"
-                      className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                      className="px-3 py-1.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-lg shadow-xs transition duration-150 flex items-center gap-1 cursor-pointer shrink-0"
                     >
                       <Save className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">שמור טיוטה באתר</span>
-                      <span className="sm:hidden">שמור</span>
+                      <span>שמור טיוטה</span>
                     </button>
                   </form>
 
-                  <div className="h-4 w-[1px] bg-slate-300 hidden lg:block"></div>
+                  <div className="h-5 w-[1px] bg-slate-200 hidden lg:block"></div>
 
-                  {/* Secondary System Utility Buttons */}
-                  <div className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:items-center sm:gap-2">
-                    {/* Export button */}
-                    <button
-                      onClick={handleExportQuickDraftToFile}
-                      title="הורד קובץ גיבוי למחשב לשחזור עתידי"
-                      className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-slate-800 hover:bg-slate-900 text-white font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <FileDown className="w-3.5 h-3.5 shrink-0" />
-                      <span className="hidden sm:inline">הורד כקובץ (.json)</span>
-                      <span className="sm:hidden">ייצוא</span>
-                    </button>
-
-                    {/* Import button */}
-                    <label className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center justify-center gap-1 cursor-pointer">
-                      <FileUp className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                      <span className="hidden sm:inline">טען קובץ גיבוי</span>
-                      <span className="sm:hidden">ייבוא</span>
-                      <input
-                        type="file"
-                        accept=".json"
-                        onChange={handleImportQuickDraftFromFile}
-                        className="hidden"
-                      />
-                    </label>
-
-                    {/* Clear / Start Fresh */}
-                    <button
-                      onClick={() => {
-                        if (confirm("האם אתה בטוח שברצונך לאפס ולמחוק את כל העבודות הפעילות? (מומלץ לבצע גיבוי לפני כן)")) {
-                          handleClearProject();
-                        }
-                      }}
-                      className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-[11px] sm:text-xs rounded-lg shadow-xs transition duration-150 flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 shrink-0 animate-pulse" />
-                      <span className="hidden sm:inline">אפס והתחל פרויקט חדש</span>
-                      <span className="sm:hidden">איפוס</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setShowAdvancedBackup(!showAdvancedBackup)}
+                    className={`w-full sm:w-auto px-3 py-1.5 sm:py-2 text-xs font-bold rounded-lg border transition duration-150 cursor-pointer flex items-center justify-center gap-1 ${
+                      showAdvancedBackup 
+                        ? "bg-slate-100 text-slate-800 border-slate-300" 
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Settings className="w-3.5 h-3.5 text-slate-500" />
+                    <span>פעולות קובץ ואיפוס</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showAdvancedBackup ? "rotate-180" : ""}`} />
+                  </button>
                 </div>
               </div>
 
+              {/* Advanced Backup Options Collapsible Drawer */}
+              {showAdvancedBackup && (
+                <div className="pt-2.5 border-t border-dashed border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2 animate-fade-in">
+                  {/* Export button */}
+                  <button
+                    onClick={handleExportQuickDraftToFile}
+                    title="הורד קובץ גיבוי למחשב לשחזור עתידי"
+                    className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-lg transition duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    <span>הורד גיבוי למחשב (.json)</span>
+                  </button>
+
+                  {/* Import button */}
+                  <label className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-lg transition duration-150 flex items-center justify-center gap-1.5 cursor-pointer">
+                    <FileUp className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>טען קובץ גיבוי מהמחשב</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleImportQuickDraftFromFile}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Clear / Start Fresh */}
+                  <button
+                    onClick={() => {
+                      if (confirm("האם אתה בטוח שברצונך לאפס ולמחוק את כל העבודות הפעילות? (מומלץ לבצע גיבוי לפני כן)")) {
+                        handleClearProject();
+                      }
+                    }}
+                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-lg transition duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>אפס עבודה והתחל מחדש</span>
+                  </button>
+                </div>
+              )}
+
               {/* Status Message */}
               {draftMessage && (
-                <div className={`p-3 rounded-xl flex items-center gap-2 text-xs font-bold animate-fade-in ${
+                <div className={`p-2 rounded-lg flex items-center gap-2 text-xs font-bold animate-fade-in ${
                   draftMessageIsError 
                     ? "bg-rose-50 text-rose-800 border border-rose-100" 
                     : "bg-emerald-50 text-emerald-800 border border-emerald-100"
