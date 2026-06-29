@@ -250,7 +250,38 @@ export const INITIAL_CATALOG: CatalogItem[] = [
   { id: "c_add43", sku: "65310", name: "חבילת איזולירבנד (סרט בידוד) 10 יח' צבעוני מעורב", category: "מובילים", costPrice: 18.00, brand: "ארקו", unit: "חבילה" },
   { id: "c_add44", sku: "65320", name: "ג'ל סיכה למשיכת כבלים במוביל 1 ק\"ג", category: "מובילים", costPrice: 38.00, brand: "ארקו", unit: "יחידה" },
   { id: "c_add45", sku: "65130", name: "קליפס מתכת אומגה לצינור 20 מ\"מ", category: "מובילים", costPrice: 0.90, brand: "ארקו", unit: "יחידה" },
-  { id: "c_add46", sku: "65131", name: "קליפס מתכת אומגה לצינור 25 מ\"מ", category: "מובילים", costPrice: 1.10, brand: "ארקו", unit: "יחידה" }
+  { id: "c_add46", sku: "65131", name: "קליפס מתכת אומגה לצינור 25 מ\"מ", category: "מובילים", costPrice: 1.10, brand: "ארקו", unit: "יחידה" },
+
+  // אביזרי הארקה ויסוד
+  { id: "c_gr1", sku: "90001", name: "אלקטרודת הארקה נחושת 1.5 מטר קוטר 14 מ\"מ", category: "אביזרי הארקה ויסוד", costPrice: 42.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_gr2", sku: "90002", name: "מחבר פליז לאלקטרודת הארקה (קופלונג)", category: "אביזרי הארקה ויסוד", costPrice: 12.50, brand: "ארקו", unit: "יחידה" },
+  { id: "c_gr3", sku: "90003", name: "פס השוואת פוטנציאלים (הארקה ראשי) 10 חיבורים", category: "אביזרי הארקה ויסוד", costPrice: 48.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_gr4", sku: "90004", name: "גיד נחושת חשוף 25 ממ\"ר להארקה (מחיר למטר)", category: "אביזרי הארקה ויסוד", costPrice: 14.50, brand: "סינרג'י", unit: "מטר" },
+  { id: "c_gr5", sku: "90005", name: "גיד נחושת חשוף 35 ממ\"ר להארקה (מחיר למטר)", category: "אביזרי הארקה ויסוד", costPrice: 19.80, brand: "סינרג'י", unit: "מטר" },
+  { id: "c_gr6", sku: "90006", name: "מהדק חיבור להארקת יסוד (ברזל בניין לגיד 25/35)", category: "אביזרי הארקה ויסוד", costPrice: 16.50, brand: "ארקו", unit: "יחידה" },
+  { id: "c_gr7", sku: "90007", name: "שרוול מגן מבודד שחור להארקה (שרוול 16 מ\"מ - 25 מטר)", category: "אביזרי הארקה ויסוד", costPrice: 38.00, brand: "ארקו", unit: "חבילה" },
+
+  // שקעים ותקעים תעשייתיים
+  { id: "c_ind1", sku: "91001", name: "תקע תעשייתי נייד CEE 3x16A אדום IP44 (פנל/קו)", category: "שקעים ותקעים תעשייתיים", costPrice: 14.50, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind2", sku: "91002", name: "שקע תעשייתי נייד CEE 3x16A אדום IP44 (קו)", category: "שקעים ותקעים תעשייתיים", costPrice: 18.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind3", sku: "91003", name: "שקע תעשייתי לקיר CEE 3x16A אדום IP44", category: "שקעים ותקעים תעשייתיים", costPrice: 22.50, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind4", sku: "91004", name: "תקע תעשייתי נייד CEE 5x16A אדום IP44", category: "שקעים ותקעים תעשייתיים", costPrice: 21.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind5", sku: "91005", name: "שקע תעשייתי נייד CEE 5x16A אדום IP44", category: "שקעים ותקעים תעשייתיים", costPrice: 26.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind6", sku: "91006", name: "שקע תעשייתי לקיר CEE 5x16A אדום IP44", category: "שקעים ותקעים תעשייתיים", costPrice: 32.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind7", sku: "91007", name: "תקע תעשייתי נייד CEE 5x32A אדום IP44", category: "שקעים ותקעים תעשייתיים", costPrice: 34.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind8", sku: "91008", name: "שקע תעשייתי נייד CEE 5x32A אדום IP44", category: "שקעים ותקעים תעשייתיים", costPrice: 42.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind9", sku: "91009", name: "שקע תעשייתי לקיר CEE 5x32A אדום IP44", category: "שקעים ותקעים תעשייתיים", costPrice: 48.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_ind10", sku: "91010", name: "מפצל תעשייתי מוגן מים IP44 (מ-5x16A ל-3 שקעי 230V)", category: "שקעים ותקעים תעשייתיים", costPrice: 85.00, brand: "ארקו", unit: "יחידה" },
+
+  // תעלות מתכת תעשייתיות
+  { id: "c_tr1", sku: "92001", name: "תעלת רשת מתכת תעשייתית 50x100 מ\"מ (אורך 3 מטר)", category: "תעלות מתכת תעשייתיות", costPrice: 48.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_tr2", sku: "92002", name: "תעלת פח מתכת מגולוונת 50x100 מ\"מ (אורך 3 מטר)", category: "תעלות מתכת תעשייתיות", costPrice: 58.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_tr3", sku: "92003", name: "תעלת פח מתכת מגולוונת 50x200 מ\"מ (אורך 3 מטר)", category: "תעלות מתכת תעשייתיות", costPrice: 78.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_tr4", sku: "92004", name: "מכסה לתעלת פח 100 מ\"מ (אורך 3 מטר)", category: "תעלות מתכת תעשייתיות", costPrice: 24.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_tr5", sku: "92005", name: "מכסה לתעלת פח 200 מ\"מ (אורך 3 מטר)", category: "תעלות מתכת תעשייתיות", costPrice: 36.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_tr6", sku: "92006", name: "זווית 90 מעלות לתעלת פח 50x100 מ\"מ", category: "תעלות מתכת תעשייתיות", costPrice: 18.50, brand: "ארקו", unit: "יחידה" },
+  { id: "c_tr7", sku: "92007", name: "מתלה תמיכה לתעלת פח (כולל מוט הברגה ושלוף)", category: "תעלות מתכת תעשייתיות", costPrice: 12.00, brand: "ארקו", unit: "יחידה" },
+  { id: "c_tr8", sku: "92008", name: "מחבר מהיר (קליפס) לחיבור תעלות רשת (חבילה 50 יח')", category: "תעלות מתכת תעשייתיות", costPrice: 32.00, brand: "ארקו", unit: "חבילה" }
 ];
 
 export const COMMON_LABOR_PRICES: CommonLaborPrice[] = [

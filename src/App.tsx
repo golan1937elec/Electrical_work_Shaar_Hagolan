@@ -275,62 +275,49 @@ export default function App() {
     try {
       const cloudData = await loadWorkspaceFromCloud(cleanCode);
       if (cloudData) {
-        const confirmOverwrite = window.confirm(`נמצאו נתוני סנכרון השמורים בענן עבור קוד זה.\nהאם ברצונך לייבא אותם ולדרוס את הנתונים המקומיים במכשיר זה?`);
-        if (confirmOverwrite) {
-          // Overwrite local state with cloud state
-          if (cloudData.catalog) setCatalog(cloudData.catalog);
-          if (cloudData.project) setProject(cloudData.project);
-          if (cloudData.archivedProjects) setSavedProjects(cloudData.archivedProjects);
-          if (cloudData.drafts) setSavedDrafts(cloudData.drafts);
-          if (cloudData.customBranches) setBranches(cloudData.customBranches);
-          if (cloudData.rates) setRates(cloudData.rates);
-          if (cloudData.vatRate) setVatRate(cloudData.vatRate);
-          if (cloudData.laborTemplates) setLaborTemplates(cloudData.laborTemplates);
+        // Overwrite local state with cloud state immediately without confirmation
+        if (cloudData.catalog) setCatalog(cloudData.catalog);
+        if (cloudData.project) setProject(cloudData.project);
+        if (cloudData.archivedProjects) setSavedProjects(cloudData.archivedProjects);
+        if (cloudData.drafts) setSavedDrafts(cloudData.drafts);
+        if (cloudData.customBranches) setBranches(cloudData.customBranches);
+        if (cloudData.rates) setRates(cloudData.rates);
+        if (cloudData.vatRate) setVatRate(cloudData.vatRate);
+        if (cloudData.laborTemplates) setLaborTemplates(cloudData.laborTemplates);
 
-          setSyncCode(cleanCode);
-          localStorage.setItem("electrician_sync_code", cleanCode);
-          
-          if (cloudData.lastUpdated) {
-            const dateObj = new Date(cloudData.lastUpdated);
-            const dateStr = dateObj.toLocaleDateString("he-IL") + " " + dateObj.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
-            setLastCloudSyncTime(dateStr);
-            localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
-          }
-          setCloudStatusMsg({ text: `החיבור הצליח! נתוני המכשיר סונכרנו מול הענן עבור הקוד ${cleanCode}`, isError: false });
-          await fetchCloudBackups(cleanCode);
-          return true;
-        } else {
-          // If they chose no, cancel
-          setCloudStatusMsg({ text: "החיבור בוטל ללא דריסת נתונים מקומיים.", isError: false });
-          return false;
-        }
-      } else {
-        // Code doesn't exist, create it by uploading current state!
-        const confirmCreate = window.confirm(`קוד סנכרון זה חדש.\nהאם ברצונך ליצור עבורו סביבת עבודה בענן ולהעלות את הנתונים הנוכחיים שלך לשם?`);
-        if (confirmCreate) {
-          setSyncCode(cleanCode);
-          localStorage.setItem("electrician_sync_code", cleanCode);
-          await saveWorkspaceToCloud(cleanCode, {
-            catalog,
-            project,
-            archivedProjects: savedProjects,
-            drafts: savedDrafts,
-            customBranches: branches,
-            rates,
-            vatRate,
-            laborTemplates,
-          });
-          const now = new Date();
-          const dateStr = now.toLocaleDateString("he-IL") + " " + now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+        setSyncCode(cleanCode);
+        localStorage.setItem("electrician_sync_code", cleanCode);
+        
+        if (cloudData.lastUpdated) {
+          const dateObj = new Date(cloudData.lastUpdated);
+          const dateStr = dateObj.toLocaleDateString("he-IL") + " " + dateObj.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
           setLastCloudSyncTime(dateStr);
           localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
-          setCloudStatusMsg({ text: `סביבת עבודה חדשה נוצרה בהצלחה בענן עם הקוד ${cleanCode}!`, isError: false });
-          await fetchCloudBackups(cleanCode);
-          return true;
-        } else {
-          setCloudStatusMsg({ text: "החיבור בוטל.", isError: false });
-          return false;
         }
+        setCloudStatusMsg({ text: `החיבור הצליח! נתוני המכשיר סונכרנו מול הענן עבור הקוד ${cleanCode}`, isError: false });
+        await fetchCloudBackups(cleanCode);
+        return true;
+      } else {
+        // Code doesn't exist, create it by uploading current state immediately without confirmation
+        setSyncCode(cleanCode);
+        localStorage.setItem("electrician_sync_code", cleanCode);
+        await saveWorkspaceToCloud(cleanCode, {
+          catalog,
+          project,
+          archivedProjects: savedProjects,
+          drafts: savedDrafts,
+          customBranches: branches,
+          rates,
+          vatRate,
+          laborTemplates,
+        });
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("he-IL") + " " + now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+        setLastCloudSyncTime(dateStr);
+        localStorage.setItem("electrician_last_cloud_sync_time", dateStr);
+        setCloudStatusMsg({ text: `סביבת עבודה חדשה נוצרה בהצלחה בענן עם הקוד ${cleanCode}!`, isError: false });
+        await fetchCloudBackups(cleanCode);
+        return true;
       }
     } catch (err: any) {
       console.error("Cloud connection error:", err);
@@ -902,8 +889,8 @@ export default function App() {
           <div className="space-y-3">
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-xl animate-pulse"></div>
-              <div className="relative bg-slate-950 p-4 rounded-full border border-indigo-500/30">
-                <Cloud className="w-12 h-12 text-amber-400 animate-bounce" />
+              <div className="relative bg-white p-2.5 rounded-xl border border-indigo-500/30 shadow-md">
+                <Logo className="h-12 w-auto" />
               </div>
             </div>
             
@@ -961,14 +948,6 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setIsGateUnlocked(true)}
-                  disabled={isCloudSyncing}
-                  className="w-full py-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
-                >
-                  המשך לעבודה ישירה (לא מקוון / נתונים מקומיים)
-                </button>
-
-                <button
                   onClick={() => setHasSavedCode(false)}
                   disabled={isCloudSyncing}
                   className="text-xs text-indigo-400 hover:text-indigo-300 font-bold underline transition py-1 cursor-pointer"
@@ -996,20 +975,6 @@ export default function App() {
                     onChange={(e) => setGatewayInputCode(e.target.value.toUpperCase())}
                     className="w-full text-center font-mono text-lg font-bold tracking-wider py-3 border border-indigo-500/30 rounded-xl bg-slate-950 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase"
                   />
-                </div>
-
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const randomCode = "ELEC-" + Math.floor(1000 + Math.random() * 9000);
-                      setGatewayInputCode(randomCode);
-                    }}
-                    className="text-[11px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/20 transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    צור קוד סנכרון חדש אקראי
-                  </button>
                 </div>
               </div>
 
@@ -1040,18 +1005,6 @@ export default function App() {
                     <Wifi className="w-4 h-4" />
                   )}
                   התחבר וסנכרן נתונים מהענן
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (window.confirm("שים לב: ללא חיבור קוד סנכרון, המידע שלך יישמר רק בדפדפן המקומי של מכשיר זה ועלול להימחק אם תנקה היסטוריית גלישה.\nהאם ברצונך להמשיך עבודה מקומית ללא גיבוי ענן?")) {
-                      setIsGateUnlocked(true);
-                    }
-                  }}
-                  disabled={isCloudSyncing}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-400 font-bold text-xs rounded-xl border border-slate-800 hover:border-slate-700 transition cursor-pointer"
-                >
-                  המשך ללא סנכרון (עבודה מקומית בלבד)
                 </button>
               </div>
             </div>
