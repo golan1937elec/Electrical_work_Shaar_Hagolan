@@ -5,7 +5,7 @@
 
 import React, { useState, useRef } from "react";
 import { CatalogItem, PRODUCT_CATEGORIES } from "../types";
-import { Search, Plus, Edit2, Check, Trash2, Tag, RefreshCw, AlertCircle, Settings, Download, Upload, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Plus, Edit2, Check, Trash2, Tag, RefreshCw, AlertCircle, Settings, Download, Upload, CheckCircle2, ChevronDown, ChevronUp, Link } from "lucide-react";
 
 interface CatalogManagerProps {
   catalog: CatalogItem[];
@@ -58,6 +58,50 @@ export default function CatalogManager({
     unit: "יחידה",
   });
   const [formError, setFormError] = useState("");
+  const [ercoUrl, setErcoUrl] = useState("");
+  const [isImportingFromErco, setIsImportingFromErco] = useState(false);
+
+  const handleImportFromErcoLink = async () => {
+    setFormError("");
+    if (!ercoUrl) {
+      setFormError("נא להזין קישור של מוצר מאתר ארכה");
+      return;
+    }
+    if (!ercoUrl.includes("erco.co.il")) {
+      setFormError("הקישור חייב להיות מאתר ארכה (erco.co.il)");
+      return;
+    }
+
+    setIsImportingFromErco(true);
+    try {
+      const res = await fetch("/api/fetch-erco", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: ercoUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "שגיאה בשליפת הנתונים");
+      }
+
+      setNewItem({
+        sku: data.sku || newItem.sku,
+        name: data.name || newItem.name,
+        category: newItem.category,
+        costPrice: data.costPrice !== undefined ? String(data.costPrice) : newItem.costPrice,
+        brand: data.brand || newItem.brand,
+        unit: "יחידה"
+      });
+
+      setErcoUrl("");
+      setFormError("");
+    } catch (err: any) {
+      console.error(err);
+      setFormError(err.message || "שגיאה בחיבור לשרת או בשליפת הנתונים. וודא שהקישור נכון.");
+    } finally {
+      setIsImportingFromErco(false);
+    }
+  };
 
   const filteredCatalog = catalog.filter((item) => {
     const matchesSearch =
@@ -418,12 +462,15 @@ export default function CatalogManager({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("⚠️ אזהרה חמורה: פעולה זו תמחק את כל המוצרים המותאמים אישית שהוספת ואת כל עריכות המחירים שביצעת, ותחזיר את הקטלוג למחירון Erco הנקי. האם אתה בטוח?")) {
+                  const verification = prompt("⚠️ אזהרה חמורה: פעולה זו תמחק את כל המוצרים המותאמים אישית שהוספת ואת כל עריכות המחירים שביצעת, ותחזיר את הקטלוג למחירון Erco הנקי.\n\nעל מנת לאשר ולבצע את האיפוס, הקלד את המילה 'איפוס' ולחץ על אישור:");
+                  if (verification === "איפוס") {
                     onResetCatalog();
                     setMaintenanceFeedback({
                       text: "הקטלוג אופס לחלוטין למצב המפעל המקורי!",
                       isError: false
                     });
+                  } else if (verification !== null) {
+                    alert("האיפוס בוטל מכיוון שהמילה 'איפוס' לא הוקלדה כנדרש.");
                   }
                 }}
                 className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-lg border border-rose-200 transition cursor-pointer"
@@ -437,18 +484,51 @@ export default function CatalogManager({
 
       {/* Add New Item Form Drawer */}
       {showAddForm && (
-        <form onSubmit={handleAddNewItem} className="p-6 bg-indigo-50/30 border-b border-indigo-100/50 transition">
+        <div className="p-6 bg-indigo-50/30 border-b border-indigo-100/50 transition">
           <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-1.5">
             <Plus className="w-4 h-4 text-indigo-600" />
             יצירת מוצר חדש בקטלוג האישי
           </h3>
 
-          {formError && (
-            <div className="mb-4 p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{formError}</span>
+          {/* Erco Link Auto-Import Section */}
+          <div className="mb-5 p-4 bg-white/85 rounded-xl border border-indigo-100 shadow-xs flex flex-col md:flex-row gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-indigo-950 mb-1.5 flex items-center gap-1.5">
+                <Link className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                שליפת נתונים אוטומטית מאתר ארכה (Erco) - הדבק קישור למוצר:
+              </label>
+              <input
+                type="url"
+                placeholder="הדבק קישור של מוצר מאתר ארכה (לדוגמה: https://www.erco.co.il/b2c/...)"
+                value={ercoUrl}
+                onChange={(e) => setErcoUrl(e.target.value)}
+                className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500 bg-white"
+              />
             </div>
-          )}
+            <button
+              type="button"
+              disabled={isImportingFromErco}
+              onClick={handleImportFromErcoLink}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-xs hover:bg-indigo-700 transition flex items-center gap-1 shrink-0 disabled:bg-indigo-300 cursor-pointer"
+            >
+              {isImportingFromErco ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  מייבא נתונים...
+                </>
+              ) : (
+                "שלך והזן אוטומטית"
+              )}
+            </button>
+          </div>
+
+          <form onSubmit={handleAddNewItem}>
+            {formError && (
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
@@ -545,6 +625,7 @@ export default function CatalogManager({
             </button>
           </div>
         </form>
+      </div>
       )}
 
       {/* Filters & Search */}
