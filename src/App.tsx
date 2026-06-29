@@ -135,6 +135,13 @@ export default function App() {
 
   const handleDeleteBackup = async (backupId: string) => {
     if (!syncCode) return;
+    
+    // Protect the latest active backup from being deleted
+    if (cloudBackups.length > 0 && backupId === cloudBackups[0].backupId) {
+      alert("לא ניתן למחוק את הגיבוי הנוכחי והפעיל ביותר. דוחות חודשיים וסיכום פרויקטים מוגנים מפני מחיקה כללית.");
+      return;
+    }
+
     const confirmDelete = window.confirm("האם אתה בטוח שברצונך למחוק גיבוי זה מהענן? פעולה זו היא בלתי הפיכה ותחסוך מקום.");
     if (!confirmDelete) return;
     
@@ -146,6 +153,30 @@ export default function App() {
     } catch (err) {
       console.error("Failed to delete backup:", err);
       setCloudStatusMsg({ text: "שגיאה במחיקת הגיבוי.", isError: true });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const handleDeleteOldBackups = async () => {
+    if (!syncCode) return;
+    if (cloudBackups.length <= 1) {
+      alert("אין גיבויים ישנים למחיקה. נשמר רק הגיבוי האחרון והכי עדכני.");
+      return;
+    }
+
+    const confirmDelete = window.confirm(`האם אתה בטוח שברצונך למחוק את כל ${cloudBackups.length - 1} הגיבויים הישנים?\n\nפעולה זו תמחק אותם לצמיתות מענן ה-Firebase ותפנה שטח אחסון. הגיבוי האחרון והכי חדש יישמר בבטחה.`);
+    if (!confirmDelete) return;
+
+    setIsCloudSyncing(true);
+    try {
+      const oldBackups = cloudBackups.slice(1);
+      await Promise.all(oldBackups.map(bk => deleteWorkspaceBackup(syncCode, bk.backupId)));
+      setCloudStatusMsg({ text: "כל הגיבויים הישנים נמחקו בהצלחה מהענן. הגיבוי האחרון נשמר.", isError: false });
+      await fetchCloudBackups(syncCode);
+    } catch (err) {
+      console.error("Failed to delete old backups:", err);
+      setCloudStatusMsg({ text: "שגיאה במחיקת הגיבויים הישנים.", isError: true });
     } finally {
       setIsCloudSyncing(false);
     }
@@ -1286,41 +1317,62 @@ export default function App() {
                         {cloudBackups.length === 0 ? (
                           <p className="text-[10px] text-slate-500 italic py-1 text-center">אין גיבויים היסטוריים שמורים עבור קוד זה. לחץ על 'גבה עכשיו ידנית לענן' ליצירת גיבוי ראשון.</p>
                         ) : (
-                          <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 pr-1">
-                            {cloudBackups.map((bk) => {
-                              const dateVal = Number(bk.backupId) || (bk.lastUpdated ? new Date(bk.lastUpdated).getTime() : Date.now());
-                              const backupDate = new Date(dateVal);
-                              const dateStr = backupDate.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" });
-                              const timeStr = backupDate.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
-                              return (
-                                <div key={bk.backupId} className="flex items-center justify-between p-2 rounded bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 transition gap-2">
-                                  <div className="flex flex-col">
-                                    <span className="text-slate-200 font-medium font-mono text-[11px] leading-tight">
-                                      {dateStr} | {timeStr}
-                                    </span>
-                                    <span className="text-[9px] text-slate-500 font-mono">
-                                      ID: {bk.backupId}
-                                    </span>
+                          <div className="space-y-2">
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 pr-1">
+                              {cloudBackups.map((bk, idx) => {
+                                const dateVal = Number(bk.backupId) || (bk.lastUpdated ? new Date(bk.lastUpdated).getTime() : Date.now());
+                                const backupDate = new Date(dateVal);
+                                const dateStr = backupDate.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                                const timeStr = backupDate.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+                                const isCurrent = idx === 0;
+                                return (
+                                  <div key={bk.backupId} className={`flex items-center justify-between p-2 rounded transition gap-2 ${isCurrent ? 'bg-slate-900 border border-amber-500/40 shadow-inner shadow-amber-500/5' : 'bg-slate-900/80 border border-slate-800/80 hover:border-slate-700'}`}>
+                                    <div className="flex flex-col">
+                                      <span className="text-slate-200 font-medium font-mono text-[11px] leading-tight flex items-center gap-1.5 flex-wrap">
+                                        {dateStr} | {timeStr}
+                                        {isCurrent && (
+                                          <span className="bg-emerald-500/20 text-emerald-400 text-[8px] font-bold px-1 py-0.5 rounded border border-emerald-500/30 animate-pulse">
+                                            פעיל ומוגן
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="text-[9px] text-slate-500 font-mono">
+                                        ID: {bk.backupId}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={() => handleRestoreBackup(bk)}
+                                        title="שחזר גיבוי זה"
+                                        className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded transition cursor-pointer"
+                                      >
+                                        <Undo2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      {!isCurrent && (
+                                        <button
+                                          onClick={() => handleDeleteBackup(bk.backupId)}
+                                          title="מחק גיבוי זה"
+                                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition cursor-pointer"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      onClick={() => handleRestoreBackup(bk)}
-                                      title="שחזר גיבוי זה"
-                                      className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded transition cursor-pointer"
-                                    >
-                                      <Undo2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteBackup(bk.backupId)}
-                                      title="מחק גיבוי זה"
-                                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
+
+                            {cloudBackups.length > 1 && (
+                              <button
+                                onClick={handleDeleteOldBackups}
+                                disabled={isCloudSyncing}
+                                className="w-full py-1.5 bg-rose-950/40 hover:bg-rose-900/40 border border-rose-800/40 hover:border-rose-700 text-rose-300 rounded text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                מחק גיבויים ישנים (פנה שטח אחסון)
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
