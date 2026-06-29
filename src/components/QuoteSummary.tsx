@@ -449,7 +449,7 @@ export default function QuoteSummary({
                 }`}
               >
                 <CheckCircle className="w-4 h-4" />
-                שמור פרויקט בארכיון
+                שמור פרויקט
               </button>
             </div>
 
@@ -512,7 +512,7 @@ export default function QuoteSummary({
                     className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-lg transition flex items-center gap-1 cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    שמור בארכיון פרויקטים
+                    שמור פרויקט
                   </button>
                 </div>
               </form>
