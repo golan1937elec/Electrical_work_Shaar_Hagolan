@@ -343,9 +343,9 @@ export default function QuoteSummary({
           </div>
 
             {/* Pricing Adjustments (Moved from Left Side) */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-150 grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-150 grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {/* Global markup percent slider */}
-              <div className="space-y-2">
+              <div className="bg-white p-3.5 rounded-lg border border-slate-200/80 flex flex-col justify-center space-y-2">
                 <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-600">אחוז רווח חומרים כללי:</span>
                   <span className="text-indigo-600 font-black bg-indigo-50 px-2 py-0.5 rounded font-mono">
@@ -369,38 +369,41 @@ export default function QuoteSummary({
                 </div>
               </div>
 
-              {/* VAT Toggle */}
-              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200/80">
-                <div>
-                  <span className="text-xs font-bold text-slate-800 block">הוספת מע״מ כללי ({vatRate}%)</span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">כבה לסיכום במזומן/ללא קבלה</span>
+              {/* Toggles column */}
+              <div className="flex flex-col gap-3">
+                {/* VAT Toggle */}
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200/80">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">הוספת מע״מ כללי ({vatRate}%)</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">כבה לסיכום במזומן/ללא קבלה</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeVat}
+                      onChange={(e) => handleUpdateField("includeVat", e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={includeVat}
-                    onChange={(e) => handleUpdateField("includeVat", e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                </label>
-              </div>
 
-              {/* Hide Material Costs Toggle */}
-              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200/80">
-                <div>
-                  <span className="text-xs font-bold text-slate-800 block">הסתרת עלות חומרים</span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">שילוב "חומרים ושירות" בשורה אחת</span>
+                {/* Hide Material Costs Toggle */}
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200/80">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">הסתרת עלות חומרים</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">שילוב "חומרים ושירות" בשורה אחת</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hideMaterialCosts}
+                      onChange={(e) => handleUpdateField("hideMaterialCosts", e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={hideMaterialCosts}
-                    onChange={(e) => handleUpdateField("hideMaterialCosts", e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                </label>
               </div>
             </div>
 
