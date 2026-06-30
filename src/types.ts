@@ -41,6 +41,7 @@ export interface Project {
   globalMarkupPercent: number; // אחוז רווח כללי מומלץ על חומרים (למשל 30%)
   includeVat: boolean;  // האם לכלול מע"מ בחישוב הסופי (17% בישראל)
   docType?: "quote" | "invoice"; // סוג מסמך: הצעת מחיר או חשבונית
+  hideMaterialCosts?: boolean; // האם להסתיר עלות חומרים ולשלב עם עלות עבודה ושירות
   jobs: Job[];          // רשימת העבודות הכלולות בפרויקט/חודש הנוכחי
 }
 
@@ -50,6 +51,12 @@ export interface CommonLaborPrice {
   defaultLaborCost: number; // מחיר עבודה מומלץ כברירת מחדל
   category: string;     // קטגוריה
   suggestedMaterials?: { sku: string; quantity: number }[]; // חומרים מומלצים לעבודה זו כברירת מחדל
+}
+
+export interface SavedRate {
+  id: string;
+  label: string;
+  rate: number;
 }
 
 export const PRODUCT_CATEGORIES = [

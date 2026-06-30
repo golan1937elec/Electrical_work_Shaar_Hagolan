@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { Job, JobItem, CatalogItem, PRODUCT_CATEGORIES } from "../types";
+import { Job, JobItem, CatalogItem, PRODUCT_CATEGORIES, SavedRate } from "../types";
 import { 
   Plus, Trash2, Search, Briefcase, Coins, ChevronDown, ChevronUp, 
   Settings, ShoppingBag, PlusCircle, MinusCircle, Info, Edit, Check,
@@ -26,6 +26,8 @@ interface JobsManagerProps {
     rateWithAssistant: number;
   };
   onUpdateRates: (newRates: { rateElectrician: number; rateSenior: number; rateWithAssistant: number }) => void;
+  customRates: SavedRate[];
+  onUpdateCustomRates: (newRates: SavedRate[]) => void;
 }
 
 export default function JobsManager({
@@ -39,6 +41,8 @@ export default function JobsManager({
   onDeleteJob,
   rates,
   onUpdateRates,
+  customRates,
+  onUpdateCustomRates,
 }: JobsManagerProps) {
   const [newJobTitle, setNewJobTitle] = useState("");
   const [newJobLabor, setNewJobLabor] = useState("");
@@ -50,34 +54,49 @@ export default function JobsManager({
   const [customMaterialName, setCustomMaterialName] = useState("");
   const [customMaterialPrice, setCustomMaterialPrice] = useState("");
 
-  const rateElectrician = rates.rateElectrician;
-  const rateSenior = rates.rateSenior;
-  const rateWithAssistant = rates.rateWithAssistant;
-
   const [isEditingShortcuts, setIsEditingShortcuts] = useState(false);
-  const [tempRateElectrician, setTempRateElectrician] = useState(rateElectrician.toString());
-  const [tempRateSenior, setTempRateSenior] = useState(rateSenior.toString());
-  const [tempRateWithAssistant, setTempRateWithAssistant] = useState(rateWithAssistant.toString());
-
-  const handleSaveShortcuts = () => {
-    const elec = Math.max(0, parseInt(tempRateElectrician) || 0);
-    const snr = Math.max(0, parseInt(tempRateSenior) || 0);
-    const asst = Math.max(0, parseInt(tempRateWithAssistant) || 0);
-
-    onUpdateRates({
-      rateElectrician: elec,
-      rateSenior: snr,
-      rateWithAssistant: asst,
-    });
-
-    setIsEditingShortcuts(false);
-  };
+  const [editingRatesList, setEditingRatesList] = useState<SavedRate[]>([]);
+  const [newRateLabel, setNewRateLabel] = useState("");
+  const [newRateValue, setNewRateValue] = useState("");
 
   const handleStartEditingShortcuts = () => {
-    setTempRateElectrician(rateElectrician.toString());
-    setTempRateSenior(rateSenior.toString());
-    setTempRateWithAssistant(rateWithAssistant.toString());
+    setEditingRatesList([...customRates]);
     setIsEditingShortcuts(true);
+  };
+
+  const handleUpdateEditingRateLabel = (id: string, label: string) => {
+    setEditingRatesList(prev => prev.map(item => item.id === id ? { ...item, label } : item));
+  };
+
+  const handleUpdateEditingRateValue = (id: string, rateStr: string) => {
+    const rate = Math.max(0, parseInt(rateStr) || 0);
+    setEditingRatesList(prev => prev.map(item => item.id === id ? { ...item, rate } : item));
+  };
+
+  const handleDeleteEditingRate = (id: string) => {
+    setEditingRatesList(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleAddEditingRate = () => {
+    if (!newRateLabel.trim() || !newRateValue) return;
+    const rate = Math.max(0, parseInt(newRateValue) || 0);
+    const newRateItem: SavedRate = {
+      id: "rate-" + Math.random().toString(36).substr(2, 9),
+      label: newRateLabel.trim(),
+      rate
+    };
+    setEditingRatesList(prev => [...prev, newRateItem]);
+    setNewRateLabel("");
+    setNewRateValue("");
+  };
+
+  const handleSaveShortcuts = () => {
+    if (editingRatesList.length === 0) {
+      alert("חובה להשאיר לפחות תעריף שמור אחד.");
+      return;
+    }
+    onUpdateCustomRates(editingRatesList);
+    setIsEditingShortcuts(false);
   };
 
   // Labor hours calculator states
@@ -285,70 +304,87 @@ export default function JobsManager({
                   <div className="mt-1.5">
                     {!isEditingShortcuts ? (
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setCalcHourlyRate(rateElectrician)}
-                          className={`text-[10px] px-2 py-0.5 rounded border transition font-medium ${calcHourlyRate === rateElectrician ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                        >
-                          חשמלאי (₪{rateElectrician})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCalcHourlyRate(rateSenior)}
-                          className={`text-[10px] px-2 py-0.5 rounded border transition font-medium ${calcHourlyRate === rateSenior ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                        >
-                          חשמלאי בכיר (₪{rateSenior})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCalcHourlyRate(rateWithAssistant)}
-                          className={`text-[10px] px-2 py-0.5 rounded border transition font-medium ${calcHourlyRate === rateWithAssistant ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                        >
-                          חשמלאי ועוזר (₪{rateWithAssistant})
-                        </button>
+                        {customRates.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => setCalcHourlyRate(r.rate)}
+                            className={`text-[10px] px-2 py-0.5 rounded border transition font-medium ${calcHourlyRate === r.rate ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                          >
+                            {r.label} (₪{r.rate})
+                          </button>
+                        ))}
                         <button
                           type="button"
                           onClick={handleStartEditingShortcuts}
                           className="text-[10px] px-1.5 py-0.5 rounded border border-dashed border-slate-300 text-indigo-600 hover:bg-indigo-50 font-medium flex items-center gap-0.5 transition"
-                          title="ערוך תעריפי קיצור דרך"
+                          title="ערוך והוסף תעריפים"
                         >
                           <Edit className="w-2.5 h-2.5" />
-                          ערוך תעריפים
+                          ניהול תעריפים
                         </button>
                       </div>
                     ) : (
-                      <div className="p-2 bg-slate-100/90 rounded-lg border border-slate-200/80 space-y-2 text-right">
-                        <div className="text-[10px] font-bold text-slate-600">ערוך תעריפי קיצור דרך מהירים (₪):</div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <div>
-                            <span className="block text-[9px] text-slate-500 truncate">חשמלאי:</span>
-                            <input
-                              type="number"
-                              value={tempRateElectrician}
-                              onChange={(e) => setTempRateElectrician(e.target.value)}
-                              className="w-full text-[10px] px-1 py-0.5 border border-slate-300 rounded bg-white text-center font-mono font-bold"
-                            />
-                          </div>
-                          <div>
-                            <span className="block text-[9px] text-slate-500 truncate">בכיר:</span>
-                            <input
-                              type="number"
-                              value={tempRateSenior}
-                              onChange={(e) => setTempRateSenior(e.target.value)}
-                              className="w-full text-[10px] px-1 py-0.5 border border-slate-300 rounded bg-white text-center font-mono font-bold"
-                            />
-                          </div>
-                          <div>
-                            <span className="block text-[9px] text-slate-500 truncate">ועוזר:</span>
-                            <input
-                              type="number"
-                              value={tempRateWithAssistant}
-                              onChange={(e) => setTempRateWithAssistant(e.target.value)}
-                              className="w-full text-[10px] px-1 py-0.5 border border-slate-300 rounded bg-white text-center font-mono font-bold"
-                            />
-                          </div>
+                      <div className="p-3 bg-slate-100/90 rounded-lg border border-slate-200/80 space-y-3 text-right">
+                        <div className="text-[10px] font-bold text-slate-700">עריכה וניהול של תעריפי שעות שמורים (₪):</div>
+                        
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {editingRatesList.map((item) => (
+                            <div key={item.id} className="flex items-center gap-1 bg-white p-1 rounded border border-slate-200">
+                              <input
+                                type="text"
+                                value={item.label}
+                                onChange={(e) => handleUpdateEditingRateLabel(item.id, e.target.value)}
+                                placeholder="תווית (למשל: חשמלאי)"
+                                className="w-1/2 text-[10px] px-1 py-0.5 border border-transparent hover:border-slate-200 rounded text-slate-800 focus:outline-none"
+                              />
+                              <input
+                                type="number"
+                                value={item.rate}
+                                onChange={(e) => handleUpdateEditingRateValue(item.id, e.target.value)}
+                                placeholder="מחיר לשעה"
+                                className="w-1/3 text-[10px] px-1 py-0.5 border border-transparent hover:border-slate-200 text-center font-mono font-bold text-indigo-700 focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEditingRate(item.id)}
+                                disabled={editingRatesList.length <= 1}
+                                className="p-0.5 text-slate-300 hover:text-rose-600 rounded disabled:opacity-30 transition"
+                                title="מחק תעריף"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex justify-end gap-1.5 pt-1 border-t border-slate-200/50">
+
+                        {/* Add New Rate Form Row */}
+                        <div className="flex items-center gap-1 bg-indigo-50/50 p-1.5 rounded border border-indigo-100">
+                          <input
+                            type="text"
+                            placeholder="תעריף חדש..."
+                            value={newRateLabel}
+                            onChange={(e) => setNewRateLabel(e.target.value)}
+                            className="w-1/2 text-[10px] px-1.5 py-1 border border-slate-200 rounded text-slate-800 bg-white"
+                          />
+                          <input
+                            type="number"
+                            placeholder="₪/שעה"
+                            value={newRateValue}
+                            onChange={(e) => setNewRateValue(e.target.value)}
+                            className="w-1/3 text-[10px] px-1.5 py-1 border border-slate-200 rounded text-center font-mono font-bold bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddEditingRate}
+                            disabled={!newRateLabel.trim() || !newRateValue}
+                            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[10px] shrink-0 disabled:bg-slate-300 transition"
+                          >
+                            הוסף
+                          </button>
+                        </div>
+
+                        <div className="flex justify-end gap-1.5 pt-2 border-t border-slate-200/50">
                           <button
                             type="button"
                             onClick={() => setIsEditingShortcuts(false)}
@@ -362,7 +398,7 @@ export default function JobsManager({
                             className="text-[9px] px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-0.5"
                           >
                             <Check className="w-2.5 h-2.5" />
-                            שמור
+                            שמור שינויים
                           </button>
                         </div>
                       </div>

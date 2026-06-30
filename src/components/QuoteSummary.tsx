@@ -35,7 +35,7 @@ export default function QuoteSummary({
   const [showBackup, setShowBackup] = useState(false);
   const [importStatus, setImportStatus] = useState<"idle" | "success" | "error">("idle");
 
-  const { clientName, clientPhone, projectAddress, branch, date, globalMarkupPercent, includeVat, docType = "quote", jobs } = project;
+  const { clientName, clientPhone, projectAddress, branch, date, globalMarkupPercent, includeVat, docType = "quote", hideMaterialCosts = false, jobs } = project;
 
   const [showArchiveForm, setShowArchiveForm] = useState(false);
   const [archiveClientName, setArchiveClientName] = useState(clientName || "");
@@ -114,25 +114,38 @@ export default function QuoteSummary({
       if (job.items.length > 0) {
         msg += `  • *חומרים ששומשו:*\n`;
         job.items.forEach((item) => {
-          const itemMarkup = item.markupPercent !== undefined ? item.markupPercent : globalMarkupPercent;
-          const clientPrice = item.costPrice * (1 + itemMarkup / 100);
-          msg += `    - ${item.name} | כמות: ${item.quantity} | מחיר יח׳: ₪${clientPrice.toFixed(1)}\n`;
+          if (hideMaterialCosts) {
+            msg += `    - ${item.name} | כמות: ${item.quantity}\n`;
+          } else {
+            const itemMarkup = item.markupPercent !== undefined ? item.markupPercent : globalMarkupPercent;
+            const clientPrice = item.costPrice * (1 + itemMarkup / 100);
+            msg += `    - ${item.name} | כמות: ${item.quantity} | מחיר יח׳: ₪${clientPrice.toFixed(1)}\n`;
+          }
         });
       }
       
-      msg += `  • *מחיר עבודה ושירות:* ₪${job.laborCost.toFixed(0)}\n`;
       const jobTotal = job.items.reduce((sum, item) => {
         const itemMarkup = item.markupPercent !== undefined ? item.markupPercent : globalMarkupPercent;
         return sum + (item.costPrice * (1 + itemMarkup / 100)) * item.quantity;
       }, 0) + job.laborCost;
-      msg += `  *סה״כ לעבודה זו:* ₪${jobTotal.toFixed(1)}\n\n`;
+
+      if (hideMaterialCosts) {
+        msg += `  *סה״כ חומרים ועבודה:* ₪${jobTotal.toFixed(1)}\n\n`;
+      } else {
+        msg += `  • *מחיר עבודה ושירות:* ₪${job.laborCost.toFixed(0)}\n`;
+        msg += `  *סה״כ לעבודה זו:* ₪${jobTotal.toFixed(1)}\n\n`;
+      }
     });
 
     msg += `------------------------------------------\n`;
     msg += `*סיכום סופי:*\n`;
-    msg += `• סה״כ חומרים ללקוח: ₪${totalClientMaterialPrice.toFixed(1)}\n`;
-    msg += `• סה״כ עבודה (שירות): ₪${totalLaborCost.toFixed(1)}\n`;
-    msg += `• סה״כ ביניים: ₪${subtotalClient.toFixed(1)}\n`;
+    if (hideMaterialCosts) {
+      msg += `• עלות חומרים ושירות: ₪${subtotalClient.toFixed(1)}\n`;
+    } else {
+      msg += `• סה״כ חומרים ללקוח: ₪${totalClientMaterialPrice.toFixed(1)}\n`;
+      msg += `• סה״כ עבודה (שירות): ₪${totalLaborCost.toFixed(1)}\n`;
+      msg += `• סה״כ ביניים: ₪${subtotalClient.toFixed(1)}\n`;
+    }
     
     if (includeVat) {
       msg += `• מע״מ (${vatRate}%): ₪${vatAmount.toFixed(1)}\n`;
@@ -159,24 +172,38 @@ export default function QuoteSummary({
       if (job.items.length > 0) {
         msg += `   חומרים ששומשו:\n`;
         job.items.forEach((item) => {
-          const itemMarkup = item.markupPercent !== undefined ? item.markupPercent : globalMarkupPercent;
-          const clientPrice = item.costPrice * (1 + itemMarkup / 100);
-          msg += `     - ${item.name} | כמות: ${item.quantity} | מחיר יח׳: ₪${clientPrice.toFixed(1)}\n`;
+          if (hideMaterialCosts) {
+            msg += `     - ${item.name} | כמות: ${item.quantity}\n`;
+          } else {
+            const itemMarkup = item.markupPercent !== undefined ? item.markupPercent : globalMarkupPercent;
+            const clientPrice = item.costPrice * (1 + itemMarkup / 100);
+            msg += `     - ${item.name} | כמות: ${item.quantity} | מחיר יח׳: ₪${clientPrice.toFixed(1)}\n`;
+          }
         });
       }
-      msg += `   מחיר עבודה ושירות: ₪${job.laborCost.toFixed(0)}\n`;
+
       const jobTotal = job.items.reduce((sum, item) => {
         const itemMarkup = item.markupPercent !== undefined ? item.markupPercent : globalMarkupPercent;
-        return sum + (item.costPrice * (1 + itemMarkup / 100)) * item.quantity;
+        return sum + (item.costPrice * (1 + itemMarkup / 150)) * item.quantity;
       }, 0) + job.laborCost;
-      msg += `   סה״כ לעבודה זו: ₪${jobTotal.toFixed(1)}\n\n`;
+
+      if (hideMaterialCosts) {
+        msg += `   סה״כ חומרים ועבודה: ₪${jobTotal.toFixed(1)}\n\n`;
+      } else {
+        msg += `   מחיר עבודה ושירות: ₪${job.laborCost.toFixed(0)}\n`;
+        msg += `   סה״כ לעבודה זו: ₪${jobTotal.toFixed(1)}\n\n`;
+      }
     });
 
     msg += `------------------------------------------\n`;
     msg += `סיכום סופי:\n`;
-    msg += `סה״כ חומרים ללקוח: ₪${totalClientMaterialPrice.toFixed(1)}\n`;
-    msg += `סה״כ עבודה: ₪${totalLaborCost.toFixed(1)}\n`;
-    msg += `סה״כ לפני מע״מ: ₪${subtotalClient.toFixed(1)}\n`;
+    if (hideMaterialCosts) {
+      msg += `עלות חומרים ושירות: ₪${subtotalClient.toFixed(1)}\n`;
+    } else {
+      msg += `סה״כ חומרים ללקוח: ₪${totalClientMaterialPrice.toFixed(1)}\n`;
+      msg += `סה״כ עבודה: ₪${totalLaborCost.toFixed(1)}\n`;
+      msg += `סה״כ לפני מע״מ: ₪${subtotalClient.toFixed(1)}\n`;
+    }
     if (includeVat) {
       msg += `מע״מ (${vatRate}%): ₪${vatAmount.toFixed(1)}\n`;
       msg += `סה״כ לתשלום (כולל מע״מ): ₪${grandTotalClient.toFixed(1)}\n`;
@@ -316,7 +343,7 @@ export default function QuoteSummary({
           </div>
 
             {/* Pricing Adjustments (Moved from Left Side) */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-150 grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-150 grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               {/* Global markup percent slider */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-bold">
@@ -358,25 +385,53 @@ export default function QuoteSummary({
                   <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                 </label>
               </div>
+
+              {/* Hide Material Costs Toggle */}
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200/80">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">הסתרת עלות חומרים</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">שילוב "חומרים ושירות" בשורה אחת</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hideMaterialCosts}
+                    onChange={(e) => handleUpdateField("hideMaterialCosts", e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
             </div>
 
             {/* Price Calculations */}
             <div className="py-6 space-y-3.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 font-semibold">סך עלות חומרים ללקוח:</span>
-                <span className="font-mono text-slate-800">₪{totalClientMaterialPrice.toFixed(1)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 font-semibold">סך מחיר עבודה (שירות):</span>
-                <span className="font-mono text-slate-800">₪{totalLaborCost.toFixed(1)}</span>
-              </div>
+              {hideMaterialCosts ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-semibold">עלות חומרים ושירות:</span>
+                  <span className="font-mono text-slate-800">₪{subtotalClient.toFixed(1)}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 font-semibold">סך עלות חומרים ללקוח:</span>
+                    <span className="font-mono text-slate-800">₪{totalClientMaterialPrice.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 font-semibold">סך מחיר עבודה (שירות):</span>
+                    <span className="font-mono text-slate-800">₪{totalLaborCost.toFixed(1)}</span>
+                  </div>
+                </>
+              )}
               
               <div className="h-[1px] bg-slate-100 my-2"></div>
               
-              <div className="flex justify-between text-sm font-bold">
-                <span className="text-slate-700">סה״כ ביניים {includeVat ? "(לפני מע״מ)" : ""}:</span>
-                <span className="font-mono text-slate-900">₪{subtotalClient.toFixed(1)}</span>
-              </div>
+              {!hideMaterialCosts && (
+                <div className="flex justify-between text-sm font-bold">
+                  <span className="text-slate-700">סה״כ ביניים {includeVat ? "(לפני מע״מ)" : ""}:</span>
+                  <span className="font-mono text-slate-900">₪{subtotalClient.toFixed(1)}</span>
+                </div>
+              )}
 
               {includeVat && (
                 <div className="flex justify-between text-sm text-slate-500">

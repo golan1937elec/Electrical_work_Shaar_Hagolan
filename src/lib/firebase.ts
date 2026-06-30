@@ -20,6 +20,7 @@ export interface WorkspaceData {
     rateSenior: number;
     rateWithAssistant: number;
   };
+  customRates?: any[];
   vatRate?: number;
   laborTemplates?: any[];
   lastUpdated: string;

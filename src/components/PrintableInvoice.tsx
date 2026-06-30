@@ -8,7 +8,7 @@ interface PrintableInvoiceProps {
 }
 
 export default function PrintableInvoice({ project, vatRate = 17 }: PrintableInvoiceProps) {
-  const { clientName, clientPhone, projectAddress, branch, date, globalMarkupPercent, includeVat, docType = "quote", jobs } = project;
+  const { clientName, clientPhone, projectAddress, branch, date, globalMarkupPercent, includeVat, docType = "quote", hideMaterialCosts = false, jobs } = project;
 
   // Global calculations
   const totalClientMaterialPrice = jobs.reduce((totalSum, job) => {
@@ -67,21 +67,23 @@ export default function PrintableInvoice({ project, vatRate = 17 }: PrintableInv
                 
                 {job.items.length > 0 && (
                   <div className="mt-2 text-xs space-y-1 pr-4 border-r-2 border-slate-200 mb-2">
-                    <div className="text-[10px] text-slate-400 font-bold">חומרים כלולים (כולל רווח):</div>
+                    <div className="text-[10px] text-slate-400 font-bold">חומרים כלולים בפרויקט:</div>
                     {job.items.map((item) => {
                       const itemMarkup = item.markupPercent !== undefined ? item.markupPercent : globalMarkupPercent;
                       const clientPrice = item.costPrice * (1 + itemMarkup / 100);
                       return (
                         <div key={item.id} className="flex justify-between text-slate-600">
                           <span>- {item.name} (כמות: {item.quantity})</span>
-                          <span className="font-mono">₪{(clientPrice * item.quantity).toFixed(1)}</span>
+                          {!hideMaterialCosts && (
+                            <span className="font-mono">₪{(clientPrice * item.quantity).toFixed(1)}</span>
+                          )}
                         </div>
                       );
                     })}
                   </div>
                 )}
                 <div className="mt-1 text-[11px] text-slate-500 pr-4">
-                  שירות ועבודה: <span className="font-bold font-mono">₪{job.laborCost.toFixed(1)}</span>
+                  {hideMaterialCosts ? "עלות חומרים ושירות לעבודה זו:" : "שירות ועבודה:"} <span className="font-bold font-mono">₪{hideMaterialCosts ? jobTotal.toFixed(1) : job.laborCost.toFixed(1)}</span>
                 </div>
               </div>
             );
@@ -91,18 +93,27 @@ export default function PrintableInvoice({ project, vatRate = 17 }: PrintableInv
 
       {/* Summary table */}
       <div className="w-72 mr-auto border-t-2 border-slate-300 pt-4 space-y-2 text-xs">
-        <div className="flex justify-between text-slate-600">
-          <span>סה״כ חומרים ללקוח:</span>
-          <span className="font-mono">₪{totalClientMaterialPrice.toFixed(1)}</span>
-        </div>
-        <div className="flex justify-between text-slate-600">
-          <span>סה״כ עבודה ושירות:</span>
-          <span className="font-mono">₪{totalLaborCost.toFixed(1)}</span>
-        </div>
-        <div className="flex justify-between font-bold border-t border-slate-200 pt-2 text-slate-800">
-          <span>סה״כ לפני מע״מ:</span>
-          <span className="font-mono">₪{subtotalClient.toFixed(1)}</span>
-        </div>
+        {hideMaterialCosts ? (
+          <div className="flex justify-between text-slate-600">
+            <span>עלות חומרים ושירות:</span>
+            <span className="font-mono">₪{subtotalClient.toFixed(1)}</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between text-slate-600">
+              <span>סה״כ חומרים ללקוח:</span>
+              <span className="font-mono">₪{totalClientMaterialPrice.toFixed(1)}</span>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>סה״כ עבודה ושירות:</span>
+              <span className="font-mono">₪{totalLaborCost.toFixed(1)}</span>
+            </div>
+            <div className="flex justify-between font-bold border-t border-slate-200 pt-2 text-slate-800">
+              <span>סה״כ לפני מע״מ:</span>
+              <span className="font-mono">₪{subtotalClient.toFixed(1)}</span>
+            </div>
+          </>
+        )}
         {includeVat && (
           <div className="flex justify-between text-slate-500">
             <span>מע״מ ({vatRate}%):</span>

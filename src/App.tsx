@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Project, CatalogItem, Job, JobItem, CommonLaborPrice } from "./types";
+import { Project, CatalogItem, Job, JobItem, CommonLaborPrice, SavedRate } from "./types";
 import { INITIAL_CATALOG, COMMON_LABOR_PRICES } from "./initialData";
 import CatalogManager from "./components/CatalogManager";
 import CommonLaborTemplates from "./components/CommonLaborTemplates";
@@ -158,6 +158,7 @@ export default function App() {
     rateSenior: 350,
     rateWithAssistant: 380,
   });
+  const [customRates, setCustomRates] = useState<SavedRate[]>([]);
   const [vatRate, setVatRate] = useState<number>(17);
   const [laborTemplates, setLaborTemplates] = useState<CommonLaborPrice[]>([]);
 
@@ -293,6 +294,7 @@ export default function App() {
       if (backup.drafts) setSavedDrafts(migrateDrafts(backup.drafts));
       if (backup.customBranches) setBranches(backup.customBranches);
       if (backup.rates) setRates(backup.rates);
+      if (backup.customRates) setCustomRates(backup.customRates);
       if (backup.vatRate !== undefined) setVatRate(backup.vatRate);
       if (backup.laborTemplates) setLaborTemplates(backup.laborTemplates);
 
@@ -317,6 +319,7 @@ export default function App() {
         drafts: savedDrafts,
         customBranches: branches,
         rates,
+        customRates,
         vatRate,
         laborTemplates,
       };
@@ -381,6 +384,7 @@ export default function App() {
         if (cloudData.drafts) setSavedDrafts(migrateDrafts(cloudData.drafts));
         if (cloudData.customBranches) setBranches(cloudData.customBranches);
         if (cloudData.rates) setRates(cloudData.rates);
+        if (cloudData.customRates) setCustomRates(cloudData.customRates);
         if (cloudData.vatRate) setVatRate(cloudData.vatRate);
         if (cloudData.laborTemplates) setLaborTemplates(cloudData.laborTemplates);
 
@@ -407,6 +411,7 @@ export default function App() {
           drafts: savedDrafts,
           customBranches: branches,
           rates,
+          customRates,
           vatRate,
           laborTemplates,
         });
@@ -495,6 +500,19 @@ export default function App() {
         rateSenior: rateSnr ? Number(rateSnr) : 350,
         rateWithAssistant: rateAsst ? Number(rateAsst) : 380,
       });
+
+      const storedCustomRates = localStorage.getItem("electrician_custom_rates");
+      if (storedCustomRates) {
+        setCustomRates(JSON.parse(storedCustomRates));
+      } else {
+        const initialCustomRates: SavedRate[] = [
+          { id: "rate-elec", label: "חשמלאי", rate: rateElec ? Number(rateElec) : 250 },
+          { id: "rate-snr", label: "חשמלאי בכיר", rate: rateSnr ? Number(rateSnr) : 350 },
+          { id: "rate-asst", label: "חשמלאי ועוזר", rate: rateAsst ? Number(rateAsst) : 380 },
+        ];
+        setCustomRates(initialCustomRates);
+        localStorage.setItem("electrician_custom_rates", JSON.stringify(initialCustomRates));
+      }
 
       const storedVat = localStorage.getItem("electrician_vat_rate");
       setVatRate(storedVat ? Number(storedVat) : 17);
@@ -614,6 +632,15 @@ export default function App() {
   useEffect(() => {
     if (!isLoaded) return;
     try {
+      localStorage.setItem("electrician_custom_rates", JSON.stringify(customRates));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [customRates, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
       localStorage.setItem("electrician_vat_rate", vatRate.toString());
     } catch (e) {
       console.error(e);
@@ -634,7 +661,7 @@ export default function App() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [catalog, project, savedProjects, savedDrafts, branches, rates, vatRate, laborTemplates, syncCode, autoSync, isLoaded]);
+  }, [catalog, project, savedProjects, savedDrafts, branches, rates, customRates, vatRate, laborTemplates, syncCode, autoSync, isLoaded]);
   // 4. Catalog Handlers
   const handleAddCatalogItem = (newItemData: Omit<CatalogItem, "id">) => {
     const newItem: CatalogItem = {
@@ -1637,6 +1664,8 @@ export default function App() {
                   onDeleteJob={handleDeleteJob}
                   rates={rates}
                   onUpdateRates={(newRates) => setRates(newRates)}
+                  customRates={customRates}
+                  onUpdateCustomRates={(newCustomRates) => setCustomRates(newCustomRates)}
                   vatRate={vatRate}
                 />
 
