@@ -79,7 +79,17 @@ export default function CatalogManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: ercoUrl }),
       });
-      const data = await res.json();
+      
+      const contentType = res.headers.get("content-type");
+      let data: any = {};
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const textResponse = await res.text();
+        console.error("Non-JSON response from server:", textResponse);
+        throw new Error("השרת החזיר תגובה שאינה תקינה. ייתכן שישנה שגיאת חיבור או חסימה מצד אתר ארכה.");
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "שגיאה בשליפת הנתונים");
       }
@@ -517,7 +527,7 @@ export default function CatalogManager({
                   מייבא נתונים...
                 </>
               ) : (
-                "שלך והזן אוטומטית"
+                "שלח והזן אוטומטית"
               )}
             </button>
           </div>

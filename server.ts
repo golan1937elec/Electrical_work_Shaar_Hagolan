@@ -20,16 +20,34 @@ app.post("/api/fetch-erco", async (req: any, res: any) => {
 
     console.log(`Fetching Erco URL: ${url}`);
     
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+    let response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+          "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache"
+        },
+        signal: AbortSignal.timeout(12000) // 12 seconds timeout
+      });
+    } catch (fetchErr: any) {
+      console.error("Fetch to Erco failed:", fetchErr);
+      if (fetchErr.name === "TimeoutError" || fetchErr.message?.includes("timeout")) {
+        return res.status(504).json({ 
+          error: "זמן החיבור לאתר ארכה פג (Timeout). ייתכן ששרת האתר חוסם חיבורים אוטומטיים או עמוס כרגע." 
+        });
       }
-    });
+      return res.status(500).json({ 
+        error: `שגיאת חיבור לאתר ארכה: ${fetchErr.message || "לא ניתן ליצור קשר עם השרת"}` 
+      });
+    }
 
     if (!response.ok) {
-      throw new Error(`שגיאה בגישה לאתר ארכה: קוד סטטוס ${response.status}`);
+      return res.status(400).json({ 
+        error: `אתר ארכה החזיר קוד שגיאה: ${response.status}. ייתכן שהדף אינו קיים או שהאתר חוסם את הבקשה.` 
+      });
     }
 
     const html = await response.text();
@@ -107,6 +125,18 @@ app.post("/api/fetch-erco", async (req: any, res: any) => {
       else if (lowerName.includes("viko")) brand = "Viko";
       else if (lowerName.includes("ארקו") || lowerName.includes("arco")) brand = "ארקו";
       else if (lowerName.includes("יוניק") || lowerName.includes("uniq")) brand = "Uniq";
+    }
+
+    // Check if we parsed absolutely nothing - indicating we likely got blocked or have an invalid product page
+    if (!name && !sku && !price) {
+      if (html.toLowerCase().includes("cloudflare") || html.toLowerCase().includes("captcha") || html.toLowerCase().includes("sucuri") || html.toLowerCase().includes("security") || html.toLowerCase().includes("verify you are human") || html.toLowerCase().includes("challenge")) {
+        return res.status(403).json({
+          error: "אתר ארכה חסם את השליפה האוטומטית הזמנית (הגנת בוטים/WAF). נא להזין את פרטי המוצר ומחיר העלות ידנית."
+        });
+      }
+      return res.status(400).json({
+        error: "לא הצלחנו לזהות את פרטי המוצר בדף זה. ודא שהקישור מוביל לדף מוצר תקין בארכה."
+      });
     }
 
     return res.json({
