@@ -129,6 +129,9 @@ export default function PrintableInvoice({ project, vatRate = 17 }: PrintableInv
       {/* Footer */}
       <div className="mt-12 text-center text-[11px] text-slate-400 border-t border-slate-200 pt-6">
         <p>{docType === "invoice" ? "חשבונית זו הופקה דיגיטלית ונכונה ליום הפקתה." : "הצעת מחיר זו הופקה דיגיטלית ונכונה ליום הפקתה."}</p>
+        {docType === "quote" && (
+          <p className="mt-1 font-bold text-slate-600">הצעת מחיר זו תקפה לשבועיים מיום הנפקתה.</p>
+        )}
         <p className="mt-1">תודה רבה על שיתוף הפעולה! נשמח לעמוד לשירותכם תמיד.</p>
       </div>
     </div>

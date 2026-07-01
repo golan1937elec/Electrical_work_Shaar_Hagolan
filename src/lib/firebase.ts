@@ -23,6 +23,7 @@ export interface WorkspaceData {
   customRates?: any[];
   vatRate?: number;
   laborTemplates?: any[];
+  savedContacts?: any[];
   lastUpdated: string;
 }
 

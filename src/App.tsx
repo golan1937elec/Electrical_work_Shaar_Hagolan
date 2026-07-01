@@ -161,6 +161,7 @@ export default function App() {
   const [customRates, setCustomRates] = useState<SavedRate[]>([]);
   const [vatRate, setVatRate] = useState<number>(17);
   const [laborTemplates, setLaborTemplates] = useState<CommonLaborPrice[]>([]);
+  const [savedContacts, setSavedContacts] = useState<{ id: string; name: string; phone: string; branch?: string; address?: string }[]>([]);
 
   // Cloud Sync States
   const [syncCode, setSyncCode] = useState<string>("");
@@ -322,6 +323,7 @@ export default function App() {
         customRates,
         vatRate,
         laborTemplates,
+        savedContacts,
       };
 
       await saveWorkspaceToCloud(codeToUse, payload);
@@ -387,6 +389,7 @@ export default function App() {
         if (cloudData.customRates) setCustomRates(cloudData.customRates);
         if (cloudData.vatRate) setVatRate(cloudData.vatRate);
         if (cloudData.laborTemplates) setLaborTemplates(cloudData.laborTemplates);
+        if (cloudData.savedContacts) setSavedContacts(cloudData.savedContacts);
 
         setSyncCode(cleanCode);
         localStorage.setItem("electrician_sync_code", cleanCode);
@@ -414,6 +417,7 @@ export default function App() {
           customRates,
           vatRate,
           laborTemplates,
+          savedContacts,
         });
         const now = new Date();
         const dateStr = now.toLocaleDateString("he-IL") + " " + now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
@@ -470,6 +474,11 @@ export default function App() {
       const storedProjects = localStorage.getItem("electrician_archived_projects");
       if (storedProjects) {
         setSavedProjects(migrateSavedProjects(JSON.parse(storedProjects)));
+      }
+
+      const storedContacts = localStorage.getItem("electrician_saved_contacts");
+      if (storedContacts) {
+        setSavedContacts(JSON.parse(storedContacts));
       }
 
       const storedDrafts = localStorage.getItem("electrician_drafts");
@@ -652,6 +661,16 @@ export default function App() {
     localStorage.setItem("electrician_auto_sync", autoSync ? "true" : "false");
   }, [autoSync, isLoaded]);
 
+  // Persist savedContacts to localStorage
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem("electrician_saved_contacts", JSON.stringify(savedContacts));
+    } catch (e) {
+      console.error("Failed to save contacts to localStorage:", e);
+    }
+  }, [savedContacts, isLoaded]);
+
   // Debounced Auto Sync to Cloud
   useEffect(() => {
     if (!isLoaded || !syncCode || !autoSync) return;
@@ -661,7 +680,7 @@ export default function App() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [catalog, project, savedProjects, savedDrafts, branches, rates, customRates, vatRate, laborTemplates, syncCode, autoSync, isLoaded]);
+  }, [catalog, project, savedProjects, savedDrafts, branches, rates, customRates, vatRate, laborTemplates, savedContacts, syncCode, autoSync, isLoaded]);
   // 4. Catalog Handlers
   const handleAddCatalogItem = (newItemData: Omit<CatalogItem, "id">) => {
     const newItem: CatalogItem = {
@@ -1675,6 +1694,8 @@ export default function App() {
                   onUpdateProject={handleUpdateProject}
                   branches={branches}
                   onUpdateBranches={(newBranches) => setBranches(newBranches)}
+                  savedContacts={savedContacts}
+                  onUpdateSavedContacts={setSavedContacts}
                 />
               </div>
 
